@@ -1,0 +1,11 @@
+---
+// Una dirección por jugador (/dorsal/5/): misma experiencia, con su ficha abierta y su vista previa al compartir
+import Vestuario from '../../layouts/Vestuario.astro';
+import { SQUAD, type Player } from '../../data/squad';
+
+export const getStaticPaths = () => SQUAD.map((player) => ({ params: { dorsal: String(player.dorsal) }, props: { player } }));
+
+const { player } = Astro.props as { player: Player };
+---
+
+<Vestuario player={player} />

@@ -1,0 +1,899 @@
+---
+import '@fontsource/anton/latin-400.css';
+import '@fontsource/bebas-neue/latin-400.css';
+import '@fontsource-variable/archivo/wght.css';
+import '@fontsource/jetbrains-mono/latin-500.css';
+import '@fontsource/jetbrains-mono/latin-600.css';
+import '../styles/global.css';
+import { POSITIONS, SEASON, SQUAD, type Player } from '../data/squad';
+import { STATS_INFO } from '../data/stats';
+import { STORE } from '../data/store';
+
+interface Props {
+  /** Jugador cuya ficha se abre al cargar (páginas /dorsal/N/) */
+  player?: Player;
+  /** Abre el personalizador al cargar (página /personaliza/) */
+  custom?: boolean;
+}
+const { player, custom } = Astro.props;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+// Para que las vistas previas al compartir funcionen en producción hay que definir `site` en astro.config.mjs
+const abs = (path: string) => new URL(base + path, Astro.site ?? Astro.url.origin).href;
+const title = player
+  ? `${player.nombre} ${player.apellido} · Dorsal ${player.dorsal} · SD Huesca ${SEASON}`
+  : custom
+    ? `Personaliza tu camiseta · SD Huesca ${SEASON}`
+    : `El vestuario del Huesca en 3D · Plantilla ${SEASON}`;
+const description = player
+  ? `La camiseta de ${player.nombre} ${player.apellido} (${player.rol.toLowerCase()}, dorsal ${player.dorsal}) en el vestuario 3D de la SD Huesca ${SEASON}.`
+  : custom
+    ? `Pon tu nombre y tu dorsal en la camiseta de la SD Huesca ${SEASON}, mírala en 3D y cómprala en la tienda oficial.`
+    : `Recorre la percha del vestuario azulgrana: las camisetas de la SD Huesca ${SEASON} en 3D, una por jugador. Tributo no oficial.`;
+const image = abs(`/og/${player ? player.dorsal : 'vestuario'}.jpg`);
+const canonical = abs(player ? `/dorsal/${player.dorsal}/` : custom ? '/personaliza/' : '/');
+
+const models = ['camiseta-campo', 'camiseta-portero', 'balon', 'bota-negra', 'bota-blanca'];
+const textures = ['/kit/campo-front.webp', '/kit/campo-back.webp', '/kit/portero-front.webp', '/kit/portero-back.webp', '/escudo/sd-huesca.webp'];
+
+const count = (pos: string) => SQUAD.filter((p) => p.pos === pos).length;
+const ticker = [
+  'Tributo no oficial',
+  'No afiliado a la SD Huesca ni a la RFEF',
+  'Fieles siempre, sin reblar',
+  `Plantilla ${SEASON}`,
+  'El Alcoraz · Huesca',
+  'Hecho con cariño en Aragón',
+];
+// en móvil los controles crecen hasta un tamaño cómodo para el dedo
+const pill =
+  'pointer-events-auto flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/15 px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-hueso/75 transition-colors hover:border-white/40 hover:text-hueso aria-pressed:border-hueso aria-pressed:bg-hueso aria-pressed:text-noche md:h-auto md:px-2.5 md:py-1.5 md:text-[10px] md:tracking-[0.18em]';
+const round =
+  'pointer-events-auto grid shrink-0 place-items-center rounded-full border border-white/15 text-hueso/75 transition-colors hover:border-white/50 hover:text-hueso';
+const gold =
+  'pointer-events-auto flex items-center justify-center gap-2 rounded-full bg-oro font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-noche shadow-lg shadow-black/40 transition-[filter,transform] hover:brightness-110 active:scale-[0.98]';
+// la interfaz aparece cuando termina el plano de entrada
+const hud = 'opacity-0 transition-opacity duration-1000 group-data-[ready=true]/app:opacity-100';
+const tile = 'rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1.5 text-center';
+const tileLabel = 'mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-hueso/50 landscape:text-[8px] landscape:tracking-[0.14em]';
+const field =
+  'mt-1 h-12 w-full select-text rounded-xl border border-white/15 bg-white/[0.06] px-3.5 font-display text-2xl uppercase tracking-wide text-hueso outline-none placeholder:text-hueso/25 focus:border-oro';
+const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/55';
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/png" href={`${base}/escudo/favicon.png`} />
+    <link rel="apple-touch-icon" href={`${base}/escudo/apple-touch-icon.png`} />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#070504" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={image} />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:site_name" content="El vestuario del Huesca en 3D" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    {/* la escena no arranca hasta tener modelos y texturas: se piden ya, sin esperar al script */}
+    {models.map((name) => <link rel="preload" as="fetch" crossorigin="anonymous" type="model/gltf-binary" href={`${base}/models/${name}.glb`} />)}
+    {textures.map((path) => <link rel="preload" as="image" type="image/webp" href={`${base}${path}`} />)}
+  </head>
+  <body class="overflow-hidden bg-noche font-sans text-hueso antialiased">
+    <main
+      id="app"
+      data-ready="false"
+      data-card=""
+      data-open={player?.id ?? (custom ? 'custom' : undefined)}
+      class="group/app grain relative h-dvh w-full select-none overflow-hidden"
+    >
+      <canvas
+        id="stage"
+        tabindex="0"
+        class="absolute inset-0 h-full w-full touch-none outline-none"
+        aria-label="Vestuario 3D con las camisetas de la plantilla. Usa las flechas para recorrerlas y Enter para abrir la ficha."
+      ></canvas>
+
+      <!-- viñeta -->
+      <div
+        class="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_85%_at_50%_45%,transparent_55%,rgba(4,2,1,0.82)_100%)]"
+      >
+      </div>
+
+      <!-- cabecera: fondo opaco bajo el título para que nada de la escena le reste contraste.
+           Móvil: escudo + título + lupa en una fila y los filtros en otra, deslizables. -->
+      <header
+        class:list={[
+          hud,
+          'pointer-events-none absolute inset-x-0 top-0 z-[35] grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2.5 bg-gradient-to-b from-noche from-[74%] to-transparent px-4 pb-8 pt-[max(0.75rem,env(safe-area-inset-top))] md:grid-cols-[1fr_auto_1fr] md:items-start md:px-8 md:pb-9 md:pt-6',
+        ]}
+      >
+        <div class="flex items-center gap-2.5">
+          <img
+            src={`${base}/escudo/sd-huesca.webp`}
+            alt="Escudo de la SD Huesca"
+            width="1200"
+            height="1390"
+            class="h-10 w-auto drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] md:h-11"
+          />
+          <div class="hidden leading-none md:block">
+            <p class="font-display text-[15px] uppercase tracking-wide">Vestuario</p>
+            <p class="mt-1 font-mono text-[9px] uppercase tracking-[0.22em] text-hueso/60">El Alcoraz</p>
+          </div>
+        </div>
+
+        <div class="min-w-0 md:text-center">
+          <h1 class="font-display text-[1.7rem] uppercase leading-[0.9] tracking-tight md:text-5xl">
+            <span class="text-[#3d6fe0]">SD</span> Huesca
+          </h1>
+          <p class="mt-1 truncate font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-oro md:mt-2 md:text-[10px] md:tracking-[0.3em]">
+            Plantilla {SEASON}<span class="hidden min-[400px]:inline"> · Primera Federación</span>
+          </p>
+        </div>
+
+        <nav class="contents md:flex md:flex-wrap md:items-center md:justify-end md:gap-1.5" aria-label="Buscar y filtrar la plantilla">
+          <div class="pointer-events-auto md:relative">
+            <button
+              id="search-toggle"
+              class:list={[round, 'h-10 w-10 md:h-[30px] md:w-[30px]']}
+              aria-label="Buscar jugador"
+              aria-expanded="false"
+              aria-controls="search-panel"
+            >
+              <svg viewBox="0 0 16 16" class="h-4 w-4 md:h-3.5 md:w-3.5" fill="none" stroke="currentColor" stroke-width="1.6"
+                ><circle cx="7" cy="7" r="4.5"></circle><path d="M10.5 10.5L14 14"></path></svg
+              >
+            </button>
+            <!-- móvil: pantalla completa; escritorio: desplegable bajo la lupa -->
+            <div
+              id="search-panel"
+              hidden
+              class="fixed inset-0 z-50 flex flex-col bg-noche/[0.97] px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 md:block md:w-64 md:rounded-xl md:border md:border-white/15 md:p-2 md:shadow-2xl md:shadow-black/70"
+            >
+              <div class="flex items-center gap-2">
+                <input
+                  id="search-input"
+                  type="search"
+                  role="combobox"
+                  aria-controls="search-results"
+                  aria-expanded="true"
+                  aria-label="Buscar por nombre o dorsal"
+                  placeholder="Nombre o dorsal"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  enterkeyhint="go"
+                  class="h-12 w-full min-w-0 select-text rounded-xl border border-white/15 bg-white/5 px-4 text-base text-hueso outline-none placeholder:text-hueso/40 focus:border-oro md:h-auto md:rounded-lg md:px-3 md:py-2 md:text-sm"
+                />
+                <button id="search-close" class="h-12 shrink-0 px-2 font-mono text-[11px] uppercase tracking-[0.16em] text-hueso/70 md:hidden">Cerrar</button>
+              </div>
+              <ul id="search-results" role="listbox" class="mt-2 min-h-0 flex-1 overflow-auto overscroll-contain md:mt-1.5 md:max-h-[52vh]"></ul>
+            </div>
+          </div>
+
+          <div
+            class="pointer-events-auto col-span-3 -mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] md:col-span-1 md:mx-0 md:flex-wrap md:justify-end md:gap-1.5 md:overflow-visible md:px-0 [&::-webkit-scrollbar]:hidden"
+          >
+            <button class={pill} data-filter="" aria-pressed="true">
+              Todos <span class="opacity-50 md:hidden xl:inline">{SQUAD.length}</span>
+            </button>
+            {
+              POSITIONS.map((p) => (
+                <button class={pill} data-filter={p.key} aria-pressed="false" title={p.label}>
+                  <span class="md:hidden">{p.label}</span>
+                  <span class="hidden md:inline">{p.short}</span>
+                  <span class="opacity-50 md:hidden xl:inline">{count(p.key)}</span>
+                </button>
+              ))
+            }
+          </div>
+        </nav>
+      </header>
+
+      <!-- rótulos de grupo, anclados a la barra -->
+      <div class:list={[hud, 'pointer-events-none absolute inset-0 z-10']}>
+        <div id="labels" class="absolute inset-0 transition-opacity duration-500">
+          {
+            POSITIONS.map((p) => (
+              <div
+                data-group={p.key}
+                class="absolute left-0 top-0 flex -translate-y-full items-baseline gap-2 whitespace-nowrap opacity-0 transition-opacity duration-300 will-change-transform [text-shadow:0_1px_6px_rgba(0,0,0,0.9)]"
+              >
+                <span class="h-px w-5 self-center bg-oro" />
+                <span class="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-hueso">{p.label}</span>
+                <span class="font-mono text-[10px] font-semibold text-oro">{count(p.key)}</span>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+
+      <!-- pie de foto de la camiseta señalada (o, en táctil, de la que queda en el centro) -->
+      <div
+        id="caption"
+        class="pointer-events-none absolute left-0 top-0 z-10 whitespace-nowrap text-center opacity-0 transition-opacity duration-200 will-change-transform [text-shadow:0_1px_8px_rgba(0,0,0,0.95),0_0_2px_rgba(0,0,0,0.9)]"
+      >
+        <p class="text-base font-semibold tracking-tight md:text-sm">
+          <span id="cap-num" class="mr-1.5 font-display text-lg text-oro md:text-base"></span><span id="cap-name"></span>
+        </p>
+        <p id="cap-meta" class="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/75"></p>
+      </div>
+
+      <!-- ficha del jugador / personalizador: hoja inferior en vertical, panel lateral en apaisado -->
+      <aside
+        id="card"
+        aria-live="polite"
+        data-open="false"
+        data-view="player"
+        class="group/card pointer-events-none absolute inset-x-2 bottom-[calc(2.5rem+env(safe-area-inset-bottom))] z-30 translate-y-6 rounded-2xl border border-white/15 bg-noche/55 px-4 pb-4 pt-2.5 opacity-0 shadow-2xl shadow-black/60 backdrop-blur-xl transition-all duration-500 data-[open=true]:pointer-events-auto data-[open=true]:translate-y-0 data-[open=true]:opacity-100 landscape:inset-x-auto landscape:bottom-auto landscape:right-[6vw] landscape:top-1/2 landscape:w-[min(390px,40vw)] landscape:-translate-y-[46%] landscape:bg-white/[0.07] landscape:p-6 landscape:data-[open=true]:-translate-y-1/2"
+      >
+        <!-- asa: en móvil la hoja se cierra deslizando hacia abajo y cambia de jugador deslizando a los lados -->
+        <div class="mx-auto mb-2 h-1 w-10 rounded-full bg-white/25 landscape:hidden"></div>
+        <button
+          id="card-close"
+          class:list={[round, 'absolute right-3 top-3 z-10 h-10 w-10 bg-noche/40 landscape:right-5 landscape:top-5 landscape:h-8 landscape:w-8']}
+          aria-label="Cerrar"
+        >
+          <svg viewBox="0 0 16 16" class="h-3.5 w-3.5 landscape:h-3 landscape:w-3" fill="none" stroke="currentColor" stroke-width="1.6"
+            ><path d="M2 2l12 12M14 2L2 14"></path></svg
+          >
+        </button>
+
+        <!-- ───────────── ficha ───────────── -->
+        <div class="group-data-[view=custom]/card:hidden">
+          <p class="hidden font-mono text-[10px] uppercase tracking-[0.26em] text-hueso/55 landscape:block">
+            Ficha <span id="card-pos" class="ml-2 rounded-full border border-oro/60 px-2 py-0.5 text-oro"></span>
+          </p>
+
+          <div class="relative flex items-center gap-3.5 pr-12 landscape:mt-4 landscape:gap-4 landscape:pr-0">
+            <!-- retrato oficial, recortado a busto -->
+            <img
+              id="card-photo"
+              alt=""
+              width="440"
+              height="648"
+              class="h-[4.6rem] w-[3.6rem] shrink-0 rounded-xl bg-white/[0.06] object-cover object-top landscape:order-last landscape:ml-auto landscape:h-[7.5rem] landscape:w-24"
+            />
+            <span id="card-num" class="font-display text-5xl leading-none text-hueso landscape:text-7xl"></span>
+            <div class="min-w-0">
+              <p class="truncate text-base leading-tight text-hueso/80 landscape:text-lg">
+                <span id="card-flag" class="mr-1.5"></span><span id="card-first"></span>
+              </p>
+              <p id="card-last" class="truncate text-2xl font-extrabold leading-tight tracking-tight landscape:text-3xl"></p>
+            </div>
+          </div>
+
+          <!-- temporada en curso -->
+          <div class="mt-3 grid grid-cols-4 gap-1.5 landscape:mt-4">
+            <div class={tile}>
+              <p class="font-display text-xl leading-none"><span id="st-pj"></span><span id="st-tit" class="ml-1 font-mono text-[9px] text-hueso/50"></span></p>
+              <p class={tileLabel}>Partidos</p>
+            </div>
+            <div class={tile}>
+              <p id="st-min" class="font-display text-xl leading-none"></p>
+              <p class={tileLabel}>Minutos</p>
+            </div>
+            <div class={tile}>
+              <p class="font-display text-xl leading-none"><span id="st-goles"></span><span id="st-asist" class="ml-1 font-mono text-[9px] text-hueso/50"></span></p>
+              <p id="st-goles-label" class={tileLabel}>Goles</p>
+            </div>
+            <div class={tile}>
+              <p class="flex items-center justify-center gap-1 font-display text-xl leading-none">
+                <span class="h-3.5 w-2.5 rounded-[2px] bg-yellow-400"></span><span id="st-ta"></span>
+                <span class="ml-1 h-3.5 w-2.5 rounded-[2px] bg-red-600"></span><span id="st-tr"></span>
+              </p>
+              <p class={tileLabel}>Tarjetas</p>
+            </div>
+          </div>
+          <p class="mt-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-hueso/40 landscape:text-[8px]">
+            Liga · jornada {STATS_INFO.jornada} · {STATS_INFO.fuente} · {STATS_INFO.fecha}
+          </p>
+
+          <dl
+            class="mt-2 grid grid-cols-2 gap-x-5 border-t border-white/10 font-mono text-[11px] uppercase tracking-[0.12em] landscape:mt-4 landscape:grid-cols-1 landscape:tracking-[0.14em] [&>div]:flex [&>div]:flex-col [&>div]:gap-0.5 [&>div]:border-b [&>div]:border-white/10 [&>div]:py-1.5 landscape:[&>div]:flex-row landscape:[&>div]:justify-between landscape:[&>div]:gap-4 landscape:[&>div]:py-2 [&_dd]:truncate [&_dd]:text-hueso landscape:[&_dd]:text-right [&_dt]:text-[9px] [&_dt]:text-hueso/45 landscape:[&_dt]:text-[11px]"
+          >
+            <div><dt>Posición</dt><dd id="card-rol"></dd></div>
+            <div><dt>Edad</dt><dd id="card-edad"></dd></div>
+            <div><dt>Nacionalidad</dt><dd id="card-pais"></dd></div>
+            <div><dt>Procedencia</dt><dd id="card-proc"></dd></div>
+            <div class="hidden landscape:flex"><dt>Contrato</dt><dd id="card-contrato"></dd></div>
+          </dl>
+
+          <div class="mt-3 flex items-center gap-2 landscape:mt-4">
+            <button id="card-custom" class:list={[gold, 'h-11 flex-1 px-4 landscape:h-9']}>
+              <svg viewBox="0 0 16 16" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 13.5l1-3.5 7-7 2.5 2.5-7 7zM9.5 4l2.5 2.5"></path></svg>
+              Con mi nombre
+            </button>
+            <button id="card-share" class:list={[round, 'h-11 w-11 landscape:h-9 landscape:w-9']} aria-label="Compartir esta camiseta">
+              <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 10V2M5 4.5L8 1.5l3 3M3 8v5.5h10V8"></path></svg>
+            </button>
+            <button id="card-prev" class:list={[round, 'h-11 w-11 landscape:h-9 landscape:w-9']} aria-label="Jugador anterior">
+              <svg viewBox="0 0 16 16" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 2L4 8l6 6"></path></svg>
+            </button>
+            <button id="card-next" class:list={[round, 'h-11 w-11 landscape:h-9 landscape:w-9']} aria-label="Jugador siguiente">
+              <svg viewBox="0 0 16 16" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2l6 6-6 6"></path></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- ───────────── personalizador ───────────── -->
+        <form id="custom-form" class="hidden group-data-[view=custom]/card:block" novalidate>
+          <p class="font-mono text-[10px] uppercase tracking-[0.26em] text-oro">Personalizador</p>
+          <h2 class="mt-1 font-display text-3xl uppercase leading-none tracking-tight landscape:text-4xl">Hazla tuya</h2>
+
+          <div class="mt-3 grid grid-cols-[1fr_5.5rem] gap-2.5 landscape:mt-5">
+            <label class={fieldLabel}>
+              Nombre
+              <input
+                id="cu-name"
+                class={field}
+                maxlength={STORE.maxName}
+                placeholder="Tu nombre"
+                autocomplete="off"
+                autocapitalize="characters"
+                spellcheck="false"
+                enterkeyhint="next"
+              />
+            </label>
+            <label class={fieldLabel}>
+              Dorsal
+              <input id="cu-num" class:list={[field, 'text-center']} maxlength={STORE.maxNumber} placeholder="12" inputmode="numeric" autocomplete="off" enterkeyhint="done" />
+            </label>
+          </div>
+          <p class="mt-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-hueso/40">
+            Hasta {STORE.maxName} letras y {STORE.maxNumber} cifras, como en la tienda
+          </p>
+
+          <fieldset class="mt-3 landscape:mt-4">
+            <legend class={fieldLabel}>Talla</legend>
+            <div class="mt-1.5 flex gap-1.5">
+              {
+                STORE.sizes.map((s, i) => (
+                  <label class="flex-1">
+                    <input type="radio" name="talla" value={s.variant} checked={i === 1} class="peer sr-only" />
+                    <span class="flex h-10 cursor-pointer items-center justify-center rounded-lg border border-white/15 font-mono text-xs font-semibold text-hueso/70 transition-colors peer-checked:border-hueso peer-checked:bg-hueso peer-checked:text-noche peer-focus-visible:ring-2 peer-focus-visible:ring-oro">
+                      {s.label}
+                    </span>
+                  </label>
+                ))
+              }
+            </div>
+          </fieldset>
+
+          <a
+            id="cu-buy"
+            target="_blank"
+            rel="noopener"
+            aria-disabled="true"
+            class:list={[gold, 'mt-4 h-12 w-full px-4 aria-disabled:pointer-events-none aria-disabled:opacity-40']}
+          >
+            <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 2.5h2l1.5 8h7l1.3-5.5H5M6.5 13.5h.01M11.5 13.5h.01"></path></svg>
+            Añadir a la cesta oficial
+          </a>
+          <p class="mt-2 text-[11px] leading-snug text-hueso/50">
+            Se abre <span class="text-hueso/80">tienda.sdhuesca.es</span> con tu nombre y tu dorsal ya puestos. El precio y el pago son allí.
+          </p>
+          <div class="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+            <button id="cu-share" type="button" class="flex h-9 items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-hueso/75 hover:text-hueso">
+              <svg viewBox="0 0 16 16" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 10V2M5 4.5L8 1.5l3 3M3 8v5.5h10V8"></path></svg>
+              Compartir diseño
+            </button>
+            <a href={STORE.product} target="_blank" rel="noopener" class="font-mono text-[10px] uppercase tracking-[0.16em] text-hueso/55 underline underline-offset-4 hover:text-hueso">
+              Ver en la tienda
+            </a>
+          </div>
+        </form>
+      </aside>
+
+      <div
+        id="toast"
+        role="status"
+        class="pointer-events-none absolute bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-hueso px-4 py-2 text-xs font-semibold text-noche opacity-0 transition-opacity duration-300"
+      >
+      </div>
+
+      <!-- llamada al personalizador: flota sobre el pie en móvil, va en el pie en escritorio -->
+      <button
+        data-personaliza
+        class:list={[
+          hud,
+          gold,
+          'absolute bottom-[calc(6.4rem+env(safe-area-inset-bottom))] right-4 z-20 h-11 px-4 group-data-[card=open]/app:pointer-events-none group-data-[card=open]/app:!opacity-0 md:hidden',
+        ]}
+      >
+        <svg viewBox="0 0 16 16" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 13.5l1-3.5 7-7 2.5 2.5-7 7zM9.5 4l2.5 2.5"></path></svg>
+        Personaliza la tuya
+      </button>
+
+      <!-- pie -->
+      <footer class:list={[hud, 'absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-noche/90 from-40% to-transparent pt-8']}>
+        <div class="flex items-end justify-between gap-3 px-4 pb-3 transition-opacity duration-300 portrait:group-data-[card=open]/app:pointer-events-none portrait:group-data-[card=open]/app:opacity-0 md:px-8">
+          <div class="min-w-0">
+            <p class="truncate text-xs text-zinc-500">© 2026 · Tributo no oficial de un aficionado</p>
+            {/* Crédito Bellostas Studio */}
+            <a
+              href="https://bellostas.studio"
+              target="_blank"
+              rel="noopener"
+              class="group mt-1.5 inline-flex items-center gap-1.5 text-xs text-zinc-500 transition-colors hover:text-white"
+              aria-label="Web diseñada y desarrollada por Bellostas Studio"
+            >
+              <span>Diseñado y desarrollado por</span>
+              <span class="relative font-semibold tracking-tight text-zinc-400 transition-colors group-hover:text-white">
+                Bellostas Studio
+                <span
+                  class="absolute -bottom-0.5 left-0 right-0 h-px origin-left scale-x-0 bg-grana-viva transition-transform duration-300 group-hover:scale-x-100"
+                ></span>
+              </span>
+            </a>
+          </div>
+          <div class="flex shrink-0 items-center gap-3">
+            <p id="hint" class="hidden font-mono text-[10px] uppercase tracking-[0.24em] text-hueso/60 transition-opacity duration-700 lg:block">
+              Arrastra la barra · Clic para abrir
+            </p>
+            <button data-personaliza class:list={[gold, 'hidden h-9 px-4 md:flex']}>
+              <svg viewBox="0 0 16 16" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 13.5l1-3.5 7-7 2.5 2.5-7 7zM9.5 4l2.5 2.5"></path></svg>
+              Personaliza la tuya
+            </button>
+            <button id="sound" class:list={[round, 'group h-10 w-10 md:h-9 md:w-9']} aria-pressed="false" aria-label="Sonido ambiente">
+              <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M2.5 6.2v3.6h2.4L8.2 13V3L4.9 6.2z"></path>
+                <path class="hidden group-aria-pressed:block" d="M10.6 5.6a3.4 3.4 0 010 4.8M12.4 3.8a6 6 0 010 8.4"></path>
+                <path class="group-aria-pressed:hidden" d="M10.8 6l3.2 4M14 6l-3.2 4"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-hidden border-t border-white/10 bg-grana pb-[env(safe-area-inset-bottom)]" aria-hidden="true">
+          <div class="flex w-max animate-ticker py-2">
+            {
+              [0, 1].map(() => (
+                <div class="flex shrink-0">
+                  {ticker.map((t) => (
+                    <span class="flex items-center font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-hueso">
+                      <span class="px-6">{t}</span>
+                      <span class="h-1 w-1 rotate-45 bg-oro" />
+                    </span>
+                  ))}
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      </footer>
+
+      <!-- telón de entrada -->
+      <div
+        id="loader"
+        data-done="false"
+        class="absolute inset-0 z-40 grid place-items-center bg-noche transition-transform duration-[1100ms] ease-[cubic-bezier(0.76,0,0.24,1)] data-[done=true]:pointer-events-none data-[done=true]:-translate-y-full"
+      >
+        <div class="text-center">
+          <img src={`${base}/escudo/sd-huesca.webp`} alt="" width="1200" height="1390" class="mx-auto h-28 w-auto" />
+          <p class="mt-6 font-display text-4xl uppercase leading-none tracking-tight">El vestuario</p>
+          <p class="mt-3 font-mono text-[10px] font-semibold uppercase tracking-[0.3em] text-oro">SD Huesca · {SEASON}</p>
+          <div class="mx-auto mt-7 h-px w-48 overflow-hidden bg-white/15">
+            <div id="loader-bar" class="h-full w-[8%] bg-oro transition-[width] duration-700"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- versión accesible / sin WebGL -->
+    <section id="fallback" class="sr-only">
+      <h2>Plantilla SD Huesca {SEASON}</h2>
+      <ul>
+        {
+          SQUAD.map((p) => (
+            <li>
+              <a href={`${base}/dorsal/${p.dorsal}/`}>
+                {p.dorsal}. {p.nombre} {p.apellido} — {p.rol} ({p.pais})
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </section>
+
+    <script>
+      import { POSITIONS, SEASON, SQUAD, type Player, type Pos } from '../data/squad';
+      import { STATS } from '../data/stats';
+      import { cartUrl } from '../data/store';
+      import { LockerRoom } from '../scripts/locker/experience';
+      import { loadKitAssets } from '../scripts/locker/jersey';
+      import { cleanName, cleanNumber } from '../scripts/locker/lettering';
+      import { Soundscape } from '../scripts/locker/sound';
+
+      const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
+      const app = $('#app');
+      const canvas = $<HTMLCanvasElement>('#stage');
+      const loader = $('#loader');
+      const bar = $('#loader-bar');
+      const card = $('#card');
+      const caption = $('#caption');
+      const labels = $('#labels');
+      const header = $('header');
+      const groupEls = new Map(
+        [...document.querySelectorAll<HTMLElement>('[data-group]')].map((el) => [el.dataset.group as Pos, el]),
+      );
+      const posLabel = (pos: Pos) => POSITIONS.find((p) => p.key === pos)!.label;
+      const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const HOME_TITLE = `El vestuario del Huesca en 3D · Plantilla ${SEASON}`;
+      const touch = matchMedia('(hover: none)').matches;
+      const photo = (p: Player) => `${BASE}/jugadores/${p.dorsal}.webp`;
+      if (touch) $('#hint').textContent = 'Desliza la barra · Toca para abrir';
+
+      // ---------------------------------------------------------------- ficha
+      const fillCard = (p: Player) => {
+        $('#card-pos').textContent = posLabel(p.pos);
+        $('#card-num').textContent = String(p.dorsal);
+        $('#card-flag').textContent = p.bandera;
+        $('#card-first').textContent = p.nombre;
+        $('#card-last').textContent = p.apellido;
+        $<HTMLImageElement>('#card-photo').src = photo(p);
+        $('#card-rol').textContent = p.capitan ? `${p.rol} · Capitán` : p.rol;
+        $('#card-edad').textContent = `${p.edad} años`;
+        $('#card-pais').textContent = p.pais;
+        $('#card-proc').textContent = p.procedencia;
+        $('#card-contrato').textContent = `Hasta ${p.contrato}`;
+        const s = STATS[p.dorsal];
+        $('#st-pj').textContent = s ? String(s.pj) : '–';
+        $('#st-tit').textContent = s ? `${s.tit} tit.` : '';
+        $('#st-min').textContent = s ? `${s.min}′` : '–';
+        // el portero enseña los goles encajados; si se ha repartido la portería no se pueden atribuir
+        const keeper = p.pos === 'POR';
+        $('#st-goles').textContent = s ? String(keeper ? (s.encajados ?? '–') : s.goles) : '–';
+        $('#st-asist').textContent = s && !keeper ? `${s.asist} asist.` : '';
+        $('#st-goles-label').textContent = keeper ? 'Encajados' : 'Goles';
+        $('#st-ta').textContent = s ? String(s.ta) : '–';
+        $('#st-tr').textContent = s ? String(s.tr) : '–';
+      };
+
+      // ------------------------------------------------- dirección de cada vista
+      /** Lo que hay abierto: un jugador, el personalizador ('custom') o nada */
+      type Target = Player | 'custom' | null;
+      const nameInput = $<HTMLInputElement>('#cu-name');
+      const numInput = $<HTMLInputElement>('#cu-num');
+      const customQuery = () => {
+        const q = new URLSearchParams();
+        if (nameInput.value) q.set('nombre', nameInput.value);
+        if (numInput.value) q.set('dorsal', numInput.value);
+        return q.size ? `?${q}` : '';
+      };
+      const pathFor = (t: Target) =>
+        t === 'custom' ? `${BASE}/personaliza/${customQuery()}` : t ? `${BASE}/dorsal/${t.dorsal}/` : `${BASE}/`;
+      const fromPath = (): Target => {
+        if (/\/personaliza\/?$/.test(location.pathname)) return 'custom';
+        const m = location.pathname.match(/\/dorsal\/(\d+)\/?$/);
+        return (m && SQUAD.find((p) => p.dorsal === Number(m[1]))) || null;
+      };
+      const titleFor = (t: Target) =>
+        t === 'custom'
+          ? `Personaliza tu camiseta · SD Huesca ${SEASON}`
+          : t
+            ? `${t.nombre} ${t.apellido} · Dorsal ${t.dorsal} · SD Huesca ${SEASON}`
+            : HOME_TITLE;
+      let current: Target = null;
+      let fromHistory = false;
+
+      const toast = (text: string) => {
+        const el = $('#toast');
+        el.textContent = text;
+        el.style.opacity = '1';
+        setTimeout(() => (el.style.opacity = '0'), 1800);
+      };
+      const share = async (url: string, text: string) => {
+        try {
+          if (navigator.share) await navigator.share({ title: document.title, text, url });
+          else {
+            await navigator.clipboard.writeText(url);
+            toast('Enlace copiado');
+          }
+        } catch (err) {
+          if ((err as Error).name !== 'AbortError') toast('No se pudo compartir');
+        }
+      };
+
+      // ---------------------------------------------------------------- sonido
+      const sound = new Soundscape();
+      const soundBtn = $('#sound');
+      const setSound = (on: boolean) => {
+        sound.setEnabled(on);
+        soundBtn.setAttribute('aria-pressed', String(on));
+        soundBtn.setAttribute('aria-label', on ? 'Silenciar sonido ambiente' : 'Activar sonido ambiente');
+        try {
+          localStorage.setItem('vestuario-sonido', on ? '1' : '0');
+        } catch {}
+      };
+      soundBtn.addEventListener('click', () => setSound(!sound.enabled));
+      let wantsSound = false;
+      try {
+        wantsSound = localStorage.getItem('vestuario-sonido') === '1';
+      } catch {}
+      // quien lo dejó encendido lo recupera con su primer toque (el navegador exige un gesto)
+      if (wantsSound) addEventListener('pointerdown', () => !sound.enabled && setSound(true), { once: true });
+
+      // las camisetas se pintan en un canvas: hay que esperar a las tipografías
+      await Promise.all([
+        document.fonts.load('400 64px Anton', 'ÁÉÍÓÚ09'),
+        document.fonts.load('400 64px "Bebas Neue"', 'ÁÉÍÓÚ09'),
+        document.fonts.load('600 16px "JetBrains Mono"'),
+      ]).catch(() => {});
+      bar.style.width = '30%';
+
+      // hueco que dejan cabecera, ficha y pie: ahí se encaja la camiseta abierta
+      const fitStage = () => {
+        if (!locker) return;
+        const w = innerWidth, h = innerHeight;
+        const top = (header.getBoundingClientRect().bottom - parseFloat(getComputedStyle(header).paddingBottom) + 6) / h;
+        locker.stageRect = matchMedia('(orientation: landscape)').matches
+          ? { x0: 0, y0: top, x1: card.offsetLeft / w, y1: ($('footer').offsetTop + 28) / h }
+          : { x0: 0, y0: top, x1: 1, y1: card.offsetTop / h };
+      };
+
+      let locker: LockerRoom | undefined;
+      try {
+        const assets = await loadKitAssets();
+        bar.style.width = '75%';
+        locker = new LockerRoom(canvas, SQUAD, assets, {
+          onHover(p) {
+            caption.style.opacity = p ? '1' : '0';
+            if (!p) return;
+            sound.tick();
+            $('#cap-num').textContent = String(p.dorsal);
+            $('#cap-name').textContent = `${p.nombre} ${p.apellido}`;
+            $('#cap-meta').textContent = `${p.rol} · ${p.procedencia}`;
+          },
+          onSelect(p) {
+            const target: Target = p ? (p.id === 'custom' ? 'custom' : p) : null;
+            card.dataset.open = String(!!target);
+            card.dataset.view = target === 'custom' ? 'custom' : 'player';
+            app.dataset.card = target ? 'open' : '';
+            if (target && target !== 'custom') fillCard(target);
+            if (target) sound.open();
+            else if (current) sound.close();
+            // la hoja cambia de alto según la vista: se mide cuando ya está pintada
+            requestAnimationFrame(fitStage);
+            $('#hint').style.opacity = '0';
+            // la dirección sigue a lo abierto: abrir y cerrar entran en el historial, pasar de jugador no
+            if (!fromHistory && location.pathname + location.search !== pathFor(target)) {
+              history[current && target ? 'replaceState' : 'pushState'](null, '', pathFor(target));
+            }
+            document.title = titleFor(target);
+            current = target;
+          },
+          onFrame({ groups, caption: cap, stage, speed }) {
+            labels.style.opacity = stage ? '0' : '1';
+            for (const [pos, el] of groupEls) {
+              const g = groups.find((g) => g.pos === pos);
+              el.style.opacity = g?.visible ? '1' : '0';
+              if (g) el.style.transform = `translate3d(${g.x.toFixed(1)}px, ${g.y.toFixed(1)}px, 0) translateY(-100%)`;
+            }
+            if (cap) caption.style.transform = `translate3d(${cap.x.toFixed(1)}px, ${cap.y.toFixed(1)}px, 0) translateX(-50%)`;
+            sound.slide(speed);
+          },
+          onIntroEnd() {
+            app.dataset.ready = 'true';
+            const deep = fromPath();
+            if (deep) open(deep, true);
+          },
+        });
+      } catch (err) {
+        console.error(err);
+        $('#fallback').className =
+          'absolute inset-0 z-50 overflow-auto bg-noche p-8 text-hueso [&_a]:underline [&_h2]:font-display [&_h2]:text-3xl [&_li]:py-1';
+      }
+      bar.style.width = '100%';
+      loader.dataset.done = 'true';
+      fitStage();
+      addEventListener('resize', fitStage);
+
+      const filters = [...document.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+      const setFilter = (pos: Pos | null) => {
+        locker?.setFilter(pos);
+        for (const b of filters) {
+          const on = (b.dataset.filter || null) === pos;
+          b.setAttribute('aria-pressed', String(on));
+          if (on) b.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+        }
+      };
+
+      /** Abre un jugador o el personalizador (o cierra con null), venga de un toque, del buscador o de la dirección */
+      function open(t: Target, history = false) {
+        if (!locker) return;
+        const active = filters.find((b) => b.getAttribute('aria-pressed') === 'true')?.dataset.filter;
+        if (t && t !== 'custom' && active && active !== t.pos) setFilter(null);
+        fromHistory = history;
+        locker.select(t === 'custom' ? 'custom' : (t?.id ?? null));
+        fromHistory = false;
+      }
+
+      if (locker) {
+        const room = locker;
+        // quien llega con un enlace directo no espera al plano de entrada completo
+        if (fromPath()) setTimeout(() => room.skipIntro(), 500);
+        addEventListener('popstate', () => open(fromPath(), true));
+
+        for (const btn of filters) {
+          btn.addEventListener('click', () => {
+            room.select(null);
+            setFilter((btn.dataset.filter || null) as Pos | null);
+          });
+        }
+        $('#card-close').addEventListener('click', () => room.select(null));
+        $('#card-prev').addEventListener('click', () => room.step(-1));
+        $('#card-next').addEventListener('click', () => room.step(1));
+        $('#card-share').addEventListener('click', () => {
+          if (current && current !== 'custom') {
+            share(location.origin + pathFor(current), `${current.nombre} ${current.apellido}, dorsal ${current.dorsal} de la SD Huesca`);
+          }
+        });
+
+        // la hoja en móvil: deslizar abajo la cierra; a los lados pasa de jugador
+        let swipe: { x: number; y: number } | null = null;
+        card.addEventListener('touchstart', (e) => {
+          swipe = (e.target as Element).closest('input, a, button, label') ? null : { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }, { passive: true });
+        card.addEventListener('touchend', (e) => {
+          if (!swipe) return;
+          const dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y;
+          swipe = null;
+          if (dy > 70 && dy > Math.abs(dx) * 1.5) room.select(null);
+          else if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && current !== 'custom') room.step(dx < 0 ? 1 : -1);
+        }, { passive: true });
+
+        // -------------------------------------------------------- personalizador
+        const buy = $<HTMLAnchorElement>('#cu-buy');
+        const form = $<HTMLFormElement>('#custom-form');
+        let stamp = 0;
+        const syncCustom = () => {
+          nameInput.value = cleanName(nameInput.value);
+          numInput.value = cleanNumber(numInput.value);
+          const name = nameInput.value.trim(), number = numInput.value;
+          const variant = new FormData(form).get('talla') as string;
+          const ready = !!name && !!number;
+          buy.setAttribute('aria-disabled', String(!ready));
+          if (ready) buy.href = cartUrl(variant, name, number);
+          else buy.removeAttribute('href');
+          // estampar es caro: se espera a que deje de teclear un instante
+          clearTimeout(stamp);
+          stamp = window.setTimeout(() => {
+            room.setCustom(name || 'TU NOMBRE', number || '12');
+            if (current === 'custom') history.replaceState(null, '', pathFor('custom'));
+          }, 110);
+        };
+        form.addEventListener('input', syncCustom);
+        form.addEventListener('submit', (e) => e.preventDefault());
+        nameInput.addEventListener('keydown', (e) => e.key === 'Enter' && numInput.focus());
+        numInput.addEventListener('keydown', (e) => e.key === 'Enter' && numInput.blur());
+        const openCustom = (prefill?: Player) => {
+          room.skipIntro();
+          if (prefill && !numInput.value) numInput.value = String(prefill.dorsal);
+          syncCustom();
+          open('custom');
+          if (!touch) setTimeout(() => nameInput.focus(), 350);
+        };
+        for (const btn of document.querySelectorAll('[data-personaliza]')) btn.addEventListener('click', () => openCustom());
+        $('#card-custom').addEventListener('click', () => openCustom(current && current !== 'custom' ? current : undefined));
+        $('#cu-share').addEventListener('click', () =>
+          share(location.origin + pathFor('custom'), 'Mira cómo queda mi camiseta de la SD Huesca'),
+        );
+        // un enlace compartido trae el diseño en la dirección
+        const q = new URLSearchParams(location.search);
+        nameInput.value = cleanName(q.get('nombre') ?? '');
+        numInput.value = cleanNumber(q.get('dorsal') ?? '');
+        syncCustom();
+
+        // ------------------------------------------------------------ buscador
+        const toggle = $('#search-toggle');
+        const panel = $('#search-panel');
+        const input = $<HTMLInputElement>('#search-input');
+        const results = $('#search-results');
+        const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+        let matches: Player[] = [];
+        let cursor = 0;
+
+        const render = () => {
+          const q = plain(input.value.trim());
+          matches = !q
+            ? SQUAD
+            : /^\d+$/.test(q)
+              ? SQUAD.filter((p) => String(p.dorsal).startsWith(q))
+              : SQUAD.filter((p) => plain(`${p.nombre} ${p.apellido} ${p.shirt}`).includes(q));
+          cursor = Math.min(cursor, Math.max(0, matches.length - 1));
+          results.replaceChildren(
+            ...matches.map((p, i) => {
+              const li = document.createElement('li');
+              li.role = 'option';
+              li.ariaSelected = String(i === cursor);
+              li.className =
+                'flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/10 aria-selected:bg-white/10 md:rounded-lg md:px-2.5 md:py-1.5';
+              const face = document.createElement('img');
+              face.src = photo(p);
+              face.alt = '';
+              face.loading = 'lazy';
+              face.className = 'h-11 w-11 shrink-0 rounded-full bg-white/10 object-cover object-top md:h-8 md:w-8';
+              const num = document.createElement('span');
+              num.className = 'w-8 text-right font-display text-2xl leading-none text-oro md:w-7 md:text-lg';
+              num.textContent = String(p.dorsal);
+              const name = document.createElement('span');
+              name.className = 'min-w-0 flex-1 truncate text-base font-semibold md:text-sm';
+              name.textContent = `${p.nombre} ${p.apellido}`;
+              const role = document.createElement('span');
+              role.className = 'font-mono text-[10px] uppercase tracking-[0.16em] text-hueso/50 md:text-[9px]';
+              role.textContent = p.pos;
+              li.append(face, num, name, role);
+              li.addEventListener('click', () => choose(p));
+              return li;
+            }),
+          );
+          if (!matches.length) {
+            const li = document.createElement('li');
+            li.className = 'px-2.5 py-3 text-base text-hueso/50 md:py-2 md:text-sm';
+            li.textContent = 'Nadie con ese nombre o dorsal';
+            results.append(li);
+          }
+          results.children[cursor]?.scrollIntoView({ block: 'nearest' });
+        };
+        const show = (on: boolean) => {
+          panel.hidden = !on;
+          toggle.setAttribute('aria-expanded', String(on));
+          if (on) {
+            input.value = '';
+            cursor = 0;
+            render();
+            input.focus();
+          } else input.blur();
+        };
+        const choose = (p: Player) => {
+          show(false);
+          room.skipIntro();
+          open(p);
+        };
+        toggle.addEventListener('click', () => show(panel.hidden));
+        $('#search-close').addEventListener('click', () => show(false));
+        input.addEventListener('input', () => {
+          cursor = 0;
+          render();
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            cursor = (cursor + (e.key === 'ArrowDown' ? 1 : -1) + matches.length) % Math.max(1, matches.length);
+            render();
+          } else if (e.key === 'Enter' && matches[cursor]) choose(matches[cursor]);
+          else if (e.key === 'Escape') show(false);
+          e.stopPropagation();
+        });
+        addEventListener('pointerdown', (e) => {
+          if (!panel.hidden && !(e.target as Element).closest('#search-panel, #search-toggle')) show(false);
+        });
+
+        canvas.addEventListener('pointermove', () => (room.kbd = false));
+        addEventListener('keydown', (e) => {
+          if (!room.ready) return room.skipIntro();
+          // escribiendo en el personalizador las teclas son del texto, salvo Escape
+          if ((e.target as Element).closest?.('input')) {
+            if (e.key === 'Escape') room.select(null);
+            return;
+          }
+          if (e.key === '/' && panel.hidden) {
+            e.preventDefault();
+            show(true);
+          } else if (e.key === 'Escape') room.select(null);
+          else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+            room.kbd = true;
+            room.step(e.key === 'ArrowRight' ? 1 : -1);
+          } else if (e.key === 'Enter' && document.activeElement?.tagName !== 'BUTTON') room.openHovered();
+        });
+      }
+    </script>
+  </body>
+</html>
