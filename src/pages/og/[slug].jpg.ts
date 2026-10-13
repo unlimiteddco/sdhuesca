@@ -79,8 +79,8 @@ function card(player?: Player) {
         el('div', { alignItems: 'center' }, [
           el('img', {}, undefined, { src: png('src/assets/og/escudo.png'), width: 69, height: 80 }),
           el('div', { flexDirection: 'column', marginLeft: 20 }, [
-            el('div', { fontSize: 34, letterSpacing: 1 }, 'SD HUESCA'),
-            el('div', { fontFamily: 'Mono', fontSize: 17, letterSpacing: 5, color: ORO, marginTop: 6 }, `PLANTILLA ${SEASON}`),
+            el('img', {}, undefined, { src: `data:image/svg+xml;base64,${file('public/escudo/sdhuesca.svg').toString('base64')}`, width: 232, height: 31 }),
+            el('div', { fontFamily: 'Mono', fontSize: 17, letterSpacing: 5, color: ORO, marginTop: 12 }, `PLANTILLA ${SEASON}`),
           ]),
         ]),
         player
