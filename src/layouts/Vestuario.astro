@@ -1,6 +1,5 @@
 ---
 import '@fontsource/anton/latin-400.css';
-import '@fontsource/bebas-neue/latin-400.css';
 import '@fontsource-variable/archivo/wght.css';
 import '@fontsource/jetbrains-mono/latin-500.css';
 import '@fontsource/jetbrains-mono/latin-600.css';
@@ -84,6 +83,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     {/* la escena no arranca hasta tener modelos y texturas: se piden ya, sin esperar al script */}
+    <link rel="preload" as="fetch" crossorigin="anonymous" type="application/json" href={`${base}/kit/dorsal.json`} />
     {models.map((name) => <link rel="preload" as="fetch" crossorigin="anonymous" type="model/gltf-binary" href={`${base}/models/${name}.glb`} />)}
     {textures.map((path) => <link rel="preload" as="image" type="image/webp" href={`${base}${path}`} />)}
   </head>
@@ -640,7 +640,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
       // las camisetas se pintan en un canvas: hay que esperar a las tipografías
       await Promise.all([
         document.fonts.load('400 64px Anton', 'ÁÉÍÓÚ09'),
-        document.fonts.load('400 64px "Bebas Neue"', 'ÁÉÍÓÚ09'),
+        document.fonts.load('400 64px "Archivo Dorsal"', 'ÁÉÍÓÚÑ'),
         document.fonts.load('600 16px "JetBrains Mono"'),
       ]).catch(() => {});
       bar.style.width = '30%';

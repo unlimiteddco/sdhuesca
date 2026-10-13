@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* letra de los nombres serigrafiados: Archivo (OFL) condensada y ajustada a la oficial */
+@font-face {
+  font-family: "Archivo Dorsal";
+  src: url("../assets/fonts/archivo-dorsal.woff2") format("woff2");
+  font-display: block;
+}
+
 @theme {
   --font-display: "Anton", "Arial Narrow", sans-serif;
   --font-sans: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;

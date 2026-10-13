@@ -7,14 +7,15 @@ import type { APIRoute, GetStaticPaths } from 'astro';
 import { Resvg } from '@resvg/resvg-js';
 import satori from 'satori';
 import sharp from 'sharp';
-import advances from '../../assets/og/bebas-advances.json';
+import advances from '../../assets/og/dorsal-advances.json';
 import kits from '../../data/kit.json';
 import { POSITIONS, SEASON, SQUAD, type Player } from '../../data/squad';
-import { LETTERING, nameAngles } from '../../scripts/locker/lettering';
+import { LETTERING, digitBoxes, digitPaths, nameAngles, type DigitArt } from '../../scripts/locker/lettering';
 
 const path = (p: string) => resolve(process.cwd(), p);
 const file = (p: string) => readFileSync(path(p));
 const png = (p: string) => `data:image/png;base64,${file(p).toString('base64')}`;
+const art: DigitArt = JSON.parse(file('public/kit/dorsal.json').toString());
 const fonts = [
   { name: 'Anton', data: file('node_modules/@fontsource/anton/files/anton-latin-400-normal.woff'), weight: 400 as const, style: 'normal' as const },
   { name: 'Mono', data: file('node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-600-normal.woff'), weight: 600 as const, style: 'normal' as const },
@@ -36,7 +37,7 @@ function lettering(player: Player) {
   const s = (text.ppm / 1281.3) * K;
   const X = (x: number) => SHIRT.left + (x - crop.x) * K, Y = (y: number) => SHIRT.top + (y - crop.y) * K;
   const adv = (ch: string) => (advances as Record<string, number>)[ch] ?? 0.4;
-  const style = `font-family="Bebas Neue" fill="${text.ink}" stroke="${text.edge}" paint-order="stroke" stroke-linejoin="round" text-anchor="middle"`;
+  const style = `font-family="Archivo Dorsal" fill="${text.ink}" stroke="${text.edge}" paint-order="stroke" stroke-linejoin="round" text-anchor="middle"`;
   const L = LETTERING, size = L.nameSize * s;
   const letters = [...player.shirt];
   const cx = X(text.cx), cy = Y(text.top) + L.arcCentre * s;
@@ -46,15 +47,11 @@ function lettering(player: Player) {
         `<text ${style} font-size="${size}" stroke-width="${4.4 * s}" transform="translate(${cx} ${cy}) rotate(${(a * 180) / Math.PI}) translate(0 ${-L.radius * s + (L.cap / 2) * size})">${letters[i]}</text>`,
     )
     .join('');
-  const height = L.numberHeight * s, font = height / L.cap, gap = L.digitGap * s;
   const digits = [...(player.estampado ?? String(player.dorsal))];
-  const widths = digits.map((d) => adv(d) * font);
-  let x = cx - (widths.reduce((a, b) => a + b, 0) + gap * (digits.length - 1)) / 2;
-  const number = digits
-    .map((d, i) => {
-      const at = x + widths[i] / 2;
-      x += widths[i] + gap;
-      return `<text ${style} font-size="${font}" stroke-width="${5 * s}" x="${at}" y="${Y(text.top) + L.numberCentre * s + height / 2}">${d}</text>`;
+  const number = digitBoxes(art, digits, cx, Y(text.top) + L.numberCentre * s, L.numberHeight * s, L.digitGap * s)
+    .map((box, i) => {
+      const { w, h } = art.digits[digits[i]];
+      return `<svg x="${box.x}" y="${box.y}" width="${box.w}" height="${box.h}" viewBox="0 0 ${w} ${h}">${digitPaths(art, digits[i], text.ink, text.edge)}</svg>`;
     })
     .join('');
   return name + number;
@@ -117,7 +114,7 @@ export const GET: APIRoute = async ({ props }) => {
   if (player) svg = svg.replace(/<\/svg>\s*$/, `${lettering(player)}</svg>`);
   const image = new Resvg(svg, {
     fitTo: { mode: 'width', value: 1200 },
-    font: { fontFiles: [path('src/assets/og/BebasNeue.ttf')], loadSystemFonts: false, defaultFontFamily: 'Bebas Neue' },
+    font: { fontFiles: [path('src/assets/og/ArchivoDorsal.ttf')], loadSystemFonts: false, defaultFontFamily: 'Archivo Dorsal' },
   })
     .render()
     .asPng();

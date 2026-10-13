@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { Player } from '../../data/squad';
 import kitInfo from '../../data/kit.json';
-import { LETTERING, nameAngles } from './lettering';
+import { LETTERING, digitBoxes, digitPaths, nameAngles, type DigitArt } from './lettering';
 
 /** Escala de los modelos de Blender dentro del vestuario */
 export const SHIRT_SCALE = 1.1;
@@ -18,13 +18,15 @@ export interface Kit {
   hook: THREE.BufferGeometry;
   front: HTMLImageElement;
   back: HTMLImageElement;
+  /** Cifras del dorsal (0–9) ya pintadas con la tinta y el borde de esta equipación */
+  digits: HTMLImageElement[];
   info: (typeof kitInfo)[KitName];
 }
 
 export interface KitAssets {
   kits: Record<KitName, Kit>;
-  /** Escudo, para el detalle que lleva el dorsal en su base */
-  crest: HTMLImageElement;
+  /** Dibujos de las cifras, para volver a pintarlas (tarjetas, pruebas) */
+  art: DigitArt;
   /** Balón de Poly Haven (CC0) */
   balls: THREE.Object3D[];
   /** Botas generadas con Magnific (texto a 3D): una por modelo, pie derecho */
@@ -44,11 +46,27 @@ function image(src: string) {
   });
 }
 
-async function loadKit(name: KitName): Promise<Kit> {
-  const [gltf, front, back] = await Promise.all([
+/** Una cifra como imagen: el SVG se monta con los colores del kit y se carga desde memoria */
+function digitImage(art: DigitArt, digit: string, ink: string, edge: string) {
+  const { w, h } = art.digits[digit];
+  // al doble de su tamaño: en la textura grande se dibuja a unos 600 px de alto
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w * 2}" height="${h * 2}" viewBox="0 0 ${w} ${h}">${digitPaths(art, digit, ink, edge)}</svg>`;
+  const src = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`No se pudo pintar la cifra ${digit}`));
+    img.src = src;
+  });
+}
+
+async function loadKit(name: KitName, art: DigitArt): Promise<Kit> {
+  const { ink, edge } = kitInfo[name].text;
+  const [gltf, front, back, ...digits] = await Promise.all([
     new GLTFLoader().loadAsync(url(`/models/camiseta-${name}.glb`)),
     image(`/kit/${name}-front.webp`),
     image(`/kit/${name}-back.webp`),
+    ...[...'0123456789'].map((d) => digitImage(art, d, ink, edge)),
   ]);
   gltf.scene.updateMatrixWorld(true);
   const geometry = (part: string) => {
@@ -59,16 +77,19 @@ async function loadKit(name: KitName): Promise<Kit> {
     if (!mesh) throw new Error(`Falta "${part}" en camiseta-${name}.glb`);
     return mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
   };
-  return { shirt: geometry('camiseta'), hanger: geometry('percha'), hook: geometry('gancho'), front, back, info: kitInfo[name] };
+  return { shirt: geometry('camiseta'), hanger: geometry('percha'), hook: geometry('gancho'), front, back, digits, info: kitInfo[name] };
 }
 
 export async function loadKitAssets(): Promise<KitAssets> {
   const loader = new GLTFLoader();
   const model = (name: string) => loader.loadAsync(url(`/models/${name}.glb`)).then((g) => g.scene);
-  const [campo, portero, crest, ball, ...boots] = await Promise.all([
-    loadKit('campo'),
-    loadKit('portero'),
-    image('/escudo/sd-huesca.webp'),
+  const art: DigitArt = await fetch(url('/kit/dorsal.json')).then((r) => {
+    if (!r.ok) throw new Error('No se pudieron cargar las cifras del dorsal');
+    return r.json();
+  });
+  const [campo, portero, ball, ...boots] = await Promise.all([
+    loadKit('campo', art),
+    loadKit('portero', art),
     model('balon'),
     model('bota-negra'),
     model('bota-blanca'),
@@ -81,10 +102,11 @@ export async function loadKitAssets(): Promise<KitAssets> {
     size.width = Math.max(size.width, (box.max.x - box.min.x) * SHIRT_SCALE);
     size.bottom = Math.min(size.bottom, box.min.y * SHIRT_SCALE);
   }
-  return { kits: { campo, portero }, crest, balls, boots, size };
+  return { kits: { campo, portero }, art, balls, boots, size };
 }
 
-const FONT = '"Bebas Neue"';
+// Archivo condensada, ajustada en ancho y grosor a la letra oficial de los nombres (tools/kit/lettering.py)
+const FONT = '"Archivo Dorsal"';
 
 /**
  * Atlas de la camiseta de un jugador: las fotos oficiales (pecho | espalda) con su nombre y
@@ -97,8 +119,7 @@ export function createKitTexture(player: Player, assets: KitAssets, k: number, a
   const canvas = document.createElement('canvas');
   canvas.width = w * 2;
   canvas.height = h;
-  // se lee algún píxel suelto (base de cada cifra): mejor un lienzo en memoria que ir y volver de la GPU
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const ctx = canvas.getContext('2d')!;
   ctx.drawImage(kit.front, 0, 0, w, h);
   ctx.drawImage(kit.back, w, 0, w, h);
 
@@ -128,31 +149,11 @@ export function createKitTexture(player: Player, assets: KitAssets, k: number, a
     ctx.restore();
   });
 
-  // dorsal, cifra a cifra; cada una lleva un escudo diminuto en su base si ahí hay trazo
-  const height = L.numberHeight * s;
-  const base = text.top + L.numberCentre * s + height / 2;
-  ctx.font = `${height / L.cap}px ${FONT}`;
-  ctx.lineWidth = 5 * s;
+  // dorsal: los dibujos oficiales de cada cifra, con su borde y el escudo a una tinta en la base
   const digits = [...(player.estampado ?? String(player.dorsal))];
-  const widths = digits.map((d) => ctx.measureText(d).width);
-  const gap = L.digitGap * s;
-  let x = text.cx - (widths.reduce((a, b) => a + b, 0) + gap * (digits.length - 1)) / 2;
-  const ink = new THREE.Color(text.ink).convertLinearToSRGB();
-  const centres = digits.map((d, i) => {
-    const cx = x + widths[i] / 2;
-    ctx.strokeText(d, cx, base);
-    ctx.fillText(d, cx, base);
-    x += widths[i] + gap;
-    return cx;
+  digitBoxes(assets.art, digits, text.cx, text.top + L.numberCentre * s, L.numberHeight * s, L.digitGap * s).forEach((box, i) => {
+    ctx.drawImage(kit.digits[+digits[i]], box.x, box.y, box.w, box.h);
   });
-  const ch = 17 * s, cw = (ch * assets.crest.naturalWidth) / assets.crest.naturalHeight;
-  for (const cx of centres) {
-    const cy = base - 0.058 * height;
-    const px = ctx.getImageData(Math.round(w + (cx - crop.x) * k), Math.round((cy - crop.y) * k), 1, 1).data;
-    if (Math.abs(px[0] / 255 - ink.r) < 0.1 && Math.abs(px[1] / 255 - ink.g) < 0.1 && Math.abs(px[2] / 255 - ink.b) < 0.1) {
-      ctx.drawImage(assets.crest, cx - cw / 2, cy - ch / 2, cw, ch);
-    }
-  }
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;

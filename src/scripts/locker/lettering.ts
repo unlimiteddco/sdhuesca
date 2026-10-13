@@ -5,8 +5,8 @@
  * campo (900 px de ancho), contadas desde el borde superior del cuello.
  */
 export const LETTERING = {
-  /** tamaño de letra del nombre */
-  nameSize: 90,
+  /** tamaño de letra del nombre: 90 px en la tienda; aquí algo más para igualar el alto de mayúsculas */
+  nameSize: 92,
   /** radio del arco y altura de su centro */
   radius: 180,
   arcCentre: 361.5,
@@ -15,9 +15,37 @@ export const LETTERING = {
   numberCentre: 463,
   /** separación entre las dos cifras */
   digitGap: 3,
-  /** alto de las mayúsculas y cifras de Bebas Neue respecto al cuerpo */
-  cap: 0.7,
+  /** alto de las mayúsculas de la letra del nombre («Archivo Dorsal») respecto al cuerpo */
+  cap: 0.686,
+  /** alto, en unidades del dibujo, de una cifra de trazo recto (1, 7); las redondas sobresalen un poco */
+  digitUnits: 708,
 };
+
+/** Dibujos de las cifras (public/kit/dorsal.json): los de la tienda oficial, con el escudo a una tinta en la base */
+export interface DigitArt {
+  /** escudo, el mismo en todas las cifras */
+  crest: string;
+  digits: Record<string, { w: number; h: number; edge: string; ink: string; crest: [number, number] }>;
+}
+
+/** Trazados SVG de una cifra con los colores de la equipación: borde, relleno y escudo en el color del borde */
+export const digitPaths = (art: DigitArt, digit: string, ink: string, edge: string) => {
+  const g = art.digits[digit];
+  return `<path fill="${edge}" d="${g.edge}"/><path fill="${ink}" d="${g.ink}"/><path fill="${edge}" transform="translate(${g.crest[0]} ${g.crest[1]})" d="${art.crest}"/>`;
+};
+
+/** Caja de cada cifra del dorsal (x, y, ancho, alto) centrada en `cx`, `cy`, para un alto de cifra recta `height` */
+export function digitBoxes(art: DigitArt, digits: string[], cx: number, cy: number, height: number, gap: number) {
+  const k = height / LETTERING.digitUnits;
+  const total = digits.reduce((sum, d) => sum + art.digits[d].w * k, 0) + gap * (digits.length - 1);
+  let x = cx - total / 2;
+  return digits.map((d) => {
+    const { w, h } = art.digits[d];
+    const box = { x, y: cy - (h * k) / 2, w: w * k, h: h * k };
+    x += w * k + gap;
+    return box;
+  });
+}
 
 /** Ángulo (rad) que le toca a cada letra según su anchura: los nombres largos abren más el arco */
 export function nameAngles(widths: number[]) {
