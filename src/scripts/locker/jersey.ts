@@ -35,7 +35,9 @@ export interface KitAssets {
   size: { width: number; bottom: number };
 }
 
-const url = (path: string) => `${import.meta.env.BASE_URL.replace(/\/$/, '')}${path}`;
+/** Huella del contenido de modelos y texturas (astro.config.mjs): cambia la URL cuando cambian */
+declare const __ASSETS__: string;
+const url = (path: string) => `${import.meta.env.BASE_URL.replace(/\/$/, '')}${path}?v=${__ASSETS__}`;
 
 function image(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {

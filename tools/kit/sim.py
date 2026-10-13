@@ -23,7 +23,7 @@ ROOT = HERE.parent.parent
 PREVIEW = "--preview" in sys.argv
 KIT = sys.argv[sys.argv.index("--kit") + 1] if "--kit" in sys.argv else "campo"
 
-FRAMES = 140
+FRAMES = 170  # los moldes crecen durante los primeros 50; el resto es para que la tela se asiente
 GUSSET = 0.06  # anchura del fuelle lateral (m)
 HANGER_HALF = 0.205  # media anchura de la percha
 HANGER_DEPTH = 0.022  # semieje en profundidad en los hombros (les da volumen)
@@ -33,6 +33,10 @@ FORM_DEPTH = (0.044, 0.034)  # semiprofundidad del molde interior arriba y abajo
 FORM_FIT = 0.9  # perímetro del molde respecto al contorno de la prenda (<1 = holgura, más pliegues)
 FORM_LENGTH = 0.6  # tramo del cuerpo que ocupa el molde; por debajo la tela cuelga libre
 FORM_GROW = 50  # fotogramas que tarda el molde en alcanzar su tamaño
+SLEEVE_DEPTH = 0.025  # semiprofundidad del molde de cada manga (solo si el patrón trae su franja superior)
+SLEEVE_FIT = 0.82  # perímetro del molde de manga respecto al contorno de la manga
+SLEEVE_ROUND = 0.012  # radio de sus esquinas: pequeño, para que la cara exterior quede casi plana
+SLEEVE_DROOP = 14  # grados que la manga cae respecto a la foto (ahí va sobre un maniquí con los brazos algo abiertos)
 HOOK_R = 0.02
 STEM = 0.07
 
@@ -62,7 +66,25 @@ shoulder_xy = xy[owner == 3]
 NECK = float(np.abs(shoulder_xy[:, 0]).min())  # media anchura del cuello: donde arranca la costura del hombro
 NECK_Z = float(shoulder_xy[np.argmin(np.abs(shoulder_xy[:, 0])), 1])
 d_shoulder = np.array([np.sqrt(((shoulder_xy - p) ** 2).sum(axis=1).min()) for p in xy])
-rest = GUSSET / 2 * smoothstep(0, 0.07, d_shoulder)
+# costado del cuerpo: de la axila (punto más alto de la costura) al bajo; en manga larga la
+# costura sube antes por debajo de la manga, y ese tramo no cuenta
+body, armpits = [], []
+for ids in data["gusset"]["seams"]:
+    pts = xy[ids]
+    k = int(np.argmax(pts[:, 1]))
+    armpits.append(pts[k])
+    body.append(pts[k:] if pts[-1, 1] < pts[0, 1] else pts[: k + 1])
+# Con franja superior en las mangas (su cara exterior), delantero y espalda se separan ahí lo
+# que mide la franja; en el cuerpo, lo que mide el fuelle del costado.
+TOPS = data.get("sleeve_tops", {}).get("seams", [])
+TOP = data.get("sleeve_tops", {}).get("width", GUSSET)
+arm_x = min(abs(float(a[0])) for a in armpits)
+# "manga" = más allá de la axila y no por debajo del puño: el costado del cuerpo, que también
+# queda lejos del centro, conserva el ancho del fuelle (si no, al bajo le sobra tela y se abre)
+cuff_z = min(float(xy[g][:, 1].min()) for g in TOPS) if TOPS else 0.0
+in_sleeve = smoothstep(arm_x - 0.03, arm_x + 0.02, np.abs(xy[:, 0])) * smoothstep(cuff_z - 0.07, cuff_z - 0.03, xy[:, 1])
+width = GUSSET + (TOP - GUSSET) * in_sleeve
+rest = width / 2 * smoothstep(0, 0.07, d_shoulder)
 
 
 # ------------------------------------------------------------------- percha
@@ -78,8 +100,11 @@ def hanger_tall(x):
 
 # sigue la línea de hombros por debajo de la costura
 xs = np.linspace(-HANGER_HALF, HANGER_HALF, 61)
+shoulder_line = np.array(data.get("shoulder_line") or shoulder_xy.tolist())  # incluye el tramo que ya no va cosido
+
+
 def seam_height(sign):
-    pts = shoulder_xy[shoulder_xy[:, 0] * sign > 0]
+    pts = shoulder_line[shoulder_line[:, 0] * sign > 0]
     pts = pts[np.argsort(np.abs(pts[:, 0]))]
     return np.interp(np.maximum(np.abs(xs), NECK + 0.009), np.abs(pts[:, 0]), pts[:, 1])  # plana bajo el hueco del cuello
 
@@ -218,13 +243,6 @@ hanger.collision.cloth_friction = 40
 # Un torso plano de sección "estadio" (dos caras planas y costados semicirculares). Su
 # perímetro es algo menor que el contorno de la tela a cada altura: la prenda lo envuelve
 # con holgura, cae recta y el fuelle dobla sobre el costado redondo.
-# costado del cuerpo: de la axila (punto más alto de la costura) al bajo; en manga larga la
-# costura sube antes por debajo de la manga, y ese tramo no cuenta
-body = []
-for ids in data["gusset"]["seams"]:
-    pts = xy[ids]
-    k = int(np.argmax(pts[:, 1]))
-    body.append(pts[k:] if pts[-1, 1] < pts[0, 1] else pts[: k + 1])
 seam = np.vstack(body)
 order = np.argsort(seam[:, 1])
 seam_z, seam_w = seam[order, 1], np.abs(seam[order, 0])
@@ -275,6 +293,64 @@ form.collision.thickness_outer = 0.0025
 form.collision.thickness_inner = 0.008
 form.collision.cloth_friction = 6
 
+# ------------------------------------------------------------ moldes de manga
+# Un tubo de sección rectangular redondeada dentro de cada manga, del hombro hacia el puño: la
+# abre para que su cara exterior (la franja, con el parche o entre los dos logos) mire hacia fuera.
+for n, ids in enumerate(TOPS):
+    top_seam = xy[ids]  # del puño hacia el hombro
+    sign = np.sign(top_seam[0, 0])
+    under = next(xy[g] for g in data["gusset"]["seams"] if np.sign(xy[g][:, 0].mean()) == sign)
+    arm = under[int(np.argmax(under[:, 1]))]
+    cuff_bottom = min((under[0], under[-1]), key=lambda q: np.linalg.norm(q - top_seam[0]))
+    inner_top = top_seam[int(len(top_seam) * 0.82)]
+    c0, c1 = (inner_top + arm) / 2, (top_seam[0] + cuff_bottom) / 2  # eje: de la sisa al centro del puño
+    h0, h1 = np.linalg.norm(inner_top - arm) / 2, np.linalg.norm(top_seam[0] - cuff_bottom) / 2
+    turn = -sign * math.radians(SLEEVE_DROOP)
+    axis = np.array([[math.cos(turn), -math.sin(turn)], [math.sin(turn), math.cos(turn)]]) @ (c1 - c0)
+    across = np.array([-axis[1], axis[0]]) / np.linalg.norm(axis)
+    centre = c0 + axis / 2
+    sm, rings = bmesh.new(), []
+    CORNER = 5
+    for u in np.linspace(0.3, 0.76, 20):
+        # arranca fino pasada la sisa (ahí manda la percha) y vuelve a afinarse hacia el puño, que cuelga libre
+        grow = float(smoothstep(0.3, 0.5, u) * (1 - 0.35 * smoothstep(0.6, 0.76, u)))
+        b = SLEEVE_DEPTH * (0.35 + 0.65 * grow)
+        r = min(SLEEVE_ROUND, b - 0.002)
+        contour = 4 * (h0 + (h1 - h0) * u) + 2 * TOP  # dos paneles, franja superior y fuelle inferior
+        a = max((SLEEVE_FIT * contour - 2 * math.pi * r - 4 * (b - r)) / 4 + r, r + 0.004) * (0.6 + 0.4 * grow)
+        ring = []
+        for qa, qb in ((1, 1), (-1, 1), (-1, -1), (1, -1)):  # las cuatro esquinas, en orden
+            start_angle = {(1, 1): 0, (-1, 1): 1, (-1, -1): 2, (1, -1): 3}[(qa, qb)] * math.pi / 2
+            for t in np.linspace(start_angle, start_angle + math.pi / 2, CORNER):
+                along, depth = qa * (a - r) + r * math.cos(t), qb * (b - r) + r * math.sin(t)
+                q = c0 + axis * u + across * along - centre
+                ring.append(sm.verts.new((q[0], depth, q[1])))
+        rings.append(ring)
+    m = len(rings[0])
+    for r0, r1 in zip(rings, rings[1:]):
+        for k in range(m):
+            sm.faces.new((r0[k], r0[(k + 1) % m], r1[(k + 1) % m], r1[k]))
+    sm.faces.new(rings[0])
+    sm.faces.new(rings[-1][::-1])
+    bmesh.ops.subdivide_edges(sm, edges=[e for e in sm.edges if e.calc_length() > 0.025], cuts=3, use_grid_fill=True)
+    bmesh.ops.triangulate(sm, faces=sm.faces)
+    bmesh.ops.recalc_face_normals(sm, faces=sm.faces)
+    smesh = bpy.data.meshes.new(f"molde_manga_{n}")
+    sm.to_mesh(smesh)
+    sm.free()
+    sleeve = bpy.data.objects.new(f"molde_manga_{n}", smesh)
+    scene.collection.objects.link(sleeve)
+    sleeve.hide_render = True
+    sleeve.location = (centre[0], 0, centre[1])
+    sleeve.scale = (0.6, 0.25, 0.6)
+    sleeve.keyframe_insert("scale", frame=1)
+    sleeve.scale = (1, 1, 1)
+    sleeve.keyframe_insert("scale", frame=FORM_GROW)
+    sleeve.modifiers.new("Collision", "COLLISION")
+    sleeve.collision.thickness_outer = 0.0025
+    sleeve.collision.thickness_inner = 0.008
+    sleeve.collision.cloth_friction = 6
+
 # --------------------------------------------------------------------- tela
 cloth = shirt.modifiers.new("Cloth", "CLOTH")
 s = cloth.settings
@@ -300,6 +376,11 @@ c.collision_quality = 5
 c.distance_min = 0.0025
 c.friction = 30
 c.use_self_collision = True
+# donde un fuelle o una franja se estrecha hasta cerrarse, sus filas quedan más juntas que la
+# distancia de autocolisión y se empujarían entre sí sin parar: esos vértices no cuentan
+crowded = shirt.vertex_groups.new(name="crowded")
+crowded.add([int(i) for i in g_ids if 2 * rest[i] / 6 < 0.004], 1.0, "REPLACE")
+c.vertex_group_self_collisions = "crowded"
 c.self_distance_min = 0.0022
 c.self_friction = 8
 cloth.point_cache.frame_start = 1
@@ -308,7 +389,10 @@ cloth.point_cache.frame_end = FRAMES
 for f in range(1, FRAMES + 1):
     scene.frame_set(f)
     if f % 15 == 0:
-        print("frame", f, flush=True)
+        # balanceo del bajo: si no tiende a cero, la prenda no ha terminado de asentarse
+        co = np.array([v.co[:] for v in shirt.evaluated_get(bpy.context.evaluated_depsgraph_get()).data.vertices])
+        low = co[:, 2] < co[:, 2].min() + 0.08
+        print("frame", f, "bajo: y media %.3f max %.3f min %.3f" % (co[low, 1].mean(), co[low, 1].max(), co[low, 1].min()), flush=True)
 
 dg = bpy.context.evaluated_depsgraph_get()
 final = bpy.data.meshes.new_from_object(shirt.evaluated_get(dg), depsgraph=dg)
@@ -468,6 +552,19 @@ bpy.ops.export_scene.gltf(
     export_yup=True,
 )
 print("exported", KIT, (out / f"camiseta-{KIT}.glb").stat().st_size // 1024, "KB")
+
+if "--forms" in sys.argv:  # depuración: dónde quedan percha y moldes respecto a la prenda
+    for o in scene.objects:
+        if o.name.startswith("molde") or o.name == "percha_colision":
+            o.hide_render = False
+            o.scale = (1, 1, 1)
+            o.animation_data_clear()
+            o.location.z -= ring_c + 0.004
+            dm = bpy.data.materials.new("dbg")
+            dm.diffuse_color = (1, 0.5, 0.1, 1)
+            o.data.materials.append(dm)
+    result.display_type = "WIRE"
+    result.hide_render = True
 
 if PREVIEW:
     img = bpy.data.images.load(str(HERE / "build" / f"atlas-{KIT}.jpg"))

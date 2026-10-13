@@ -52,6 +52,17 @@ KITS = {
         edge="#0c0c10",
         lining="#1f3f5c",  # color del interior de la prenda (se ve por el cuello)
         text_cx=450,  # la tienda oficial centra la serigrafía en la foto, no en el cuello
+        # Cara exterior de la manga. De frente y de espalda se ve de canto, así que el patrón que sale
+        # de esas fotos se queda sin ella: se añade como una franja entre delantero y espalda, desde
+        # el puño hacia el hombro, con la tela de la foto lateral y el parche de su primer plano.
+        sleeve_top=dict(
+            length=0.225,  # metros de costura que cubre, contados desde el puño
+            width=0.084,  # ancho de la franja: lo que mide el parche más un margen
+            side="lateral.webp",  # foto lateral (manga izquierda): eje de la manga, borde del puño y media banda lisa entre los dos logos
+            centre=496, cuff=490, band=41,
+            # parche de la manga derecha: su elipse en el primer plano, a qué distancia del puño va y cuánto mide
+            patch=dict(photo="manga-rfef.webp", centre=(336, 706), radius=(187, 211), at=0.086, size=0.078),
+        ),
     ),
     # Tercera equipación de portero (tienda oficial, 2025/26), manga larga con cuello polo. Es la
     # naranja, el color con el que posan los porteros en las fotos oficiales de la plantilla
@@ -270,7 +281,20 @@ def build(kit, cfg):
 
     # los hombros se cosen directamente (vértices compartidos); los costados se unen con un fuelle
     rk = lambda p: (round(float(p[0]), 2), round(float(p[1]), 2))  # noqa: E731
-    shoulder = {rk(p) for key in ("neckA>cuffTopA", "cuffTopB>neckB") for p in seam[key]}
+    top_cfg = cfg.get("sleeve_top")
+
+    def sleeve_seam(key):
+        """Tramo de la costura del hombro que recorre la manga: puntos del puño hacia dentro y su
+        distancia al puño. El último es el primer punto que sigue cosido (donde acaba la franja)."""
+        pts = seam[key] if key.startswith("cuffTop") else seam[key][::-1]
+        d = np.r_[0, np.cumsum(np.linalg.norm(np.diff(pts, axis=0), axis=1))]
+        n = int(np.searchsorted(d, top_cfg["length"] * px_per_m)) if top_cfg else 0
+        return pts[: n + 1], d[: n + 1]
+
+    shoulder = set()
+    for key in ("neckA>cuffTopA", "cuffTopB>neckB"):
+        open_part = {rk(p) for p in sleeve_seam(key)[0][:-1]} if top_cfg else set()
+        shoulder |= {rk(p) for p in seam[key]} - open_part
 
     panels = {}
     for name, opening, unwarp in (("back", b_open, unwarp_b), ("front", f_open, unwarp_f)):
@@ -338,6 +362,39 @@ def build(kit, cfg):
                     gusset["faces"].append([grid[quad[c][0]][quad[c][1]] for c in tri])
                     gusset["uvs"].append([uv[quad[c][1]][quad[c][0]].round(5).tolist() for c in tri])
 
+    # franja superior de cada manga: va del borde del delantero al de la espalda y se estrecha
+    # hasta desaparecer donde el hombro vuelve a ir cosido. Su textura ocupa una esquina libre de
+    # la foto delantera (el hueco bajo cada manga, fuera de la silueta): a la izquierda la de la
+    # manga A y a la derecha la de la B.
+    tops, top_rects = [], {}
+    if top_cfg:
+        ROWS_TOP = 10
+        rw, pad = top_cfg["width"] * px_per_m, 60
+        for name, key in (("A", "neckA>cuffTopA"), ("B", "cuffTopB>neckB")):
+            pts, d = sleeve_seam(key)
+            rect = dict(x=pad if name == "A" else W - pad - rw, y=525.0, w=rw, h=float(d[-1]))
+            top_rects[name] = rect
+            # misma ley de ancho que la separación de los paneles en la simulación
+            taper = np.clip((d[-1] - d) / (0.07 * px_per_m), 0, 1)
+            taper = taper * taper * (3 - 2 * taper)
+            grid = []
+            for i, p in enumerate(pts):
+                if i == len(pts) - 1:
+                    row = [key_of[rk(p)]] * (ROWS_TOP + 1)
+                else:
+                    row = [key_of[("front", rk(p))]] + [vid(p) for _ in range(ROWS_TOP - 1)] + [key_of[("back", rk(p))]]
+                    for r, i_v in enumerate(row):
+                        gusset["t"][i_v] = r / ROWS_TOP
+                grid.append(row)
+            uv = lambda i, r: photo_uv(np.array([[rect["x"] + rw * (0.5 + (r / ROWS_TOP - 0.5) * taper[i]), rect["y"] + d[-1] - d[i]]]), 0)[0]  # noqa: E731
+            for i in range(len(pts) - 1):
+                for r in range(ROWS_TOP):
+                    quad = [(i, r), (i + 1, r), (i + 1, r + 1), (i, r + 1)]
+                    for tri in ((0, 1, 2), (0, 2, 3)):
+                        gusset["faces"].append([grid[quad[c][0]][quad[c][1]] for c in tri])
+                        gusset["uvs"].append([uv(*quad[c]).round(5).tolist() for c in tri])
+            tops.append([row[0] for row in grid])
+
     verts = np.array(verts)
     cx = (verts[:, 0].min() + verts[:, 0].max()) / 2
     xy = np.c_[(verts[:, 0] - cx) / px_per_m, -(verts[:, 1] - top) / px_per_m]
@@ -353,15 +410,27 @@ def build(kit, cfg):
             neck=p["neck"],
         )
     out["gusset"] = dict(faces=gusset["faces"], uvs=gusset["uvs"], ids=list(gusset["t"]), t=list(gusset["t"].values()), seams=gusset["seams"])
+    if top_cfg:
+        to_m = lambda p: [round(float((p[0] - cx) / px_per_m), 5), round(float(-(p[1] - top) / px_per_m), 5)]  # noqa: E731
+        out["sleeve_tops"] = dict(seams=tops, width=top_cfg["width"])
+        # línea completa de hombros (la percha la sigue aunque parte ya no vaya cosida)
+        out["shoulder_line"] = [to_m(p) for key in ("neckA>cuffTopA", "cuffTopB>neckB") for p in seam[key]]
     (BUILD / f"panels-{kit}.json").write_text(json.dumps(out))
 
     # ---------------------------------------------------------------- texturas
-    def texture(img, mask):
+    def texture(img, mask, exclude=None):
         img = delight(img, mask, cfg["delight"])
         # el color del tejido se extiende hacia fuera del contorno. Se toma de bien dentro y sin
         # píxeles sueltos: el borde de la foto está mezclado con el fondo blanco, y una costura que
         # cayera ahí salía moteada de blanco
         inside = cv2.erode(mask, np.ones((13, 13), np.uint8)) > 0
+        # las rendijas de fondo que la silueta engloba (entre la manga y el cuerpo, en la axila)
+        # tampoco son tela: sin esto la axila salía con una cuña blanca
+        n, labels = cv2.connectedComponents((img.min(axis=2) >= 236).astype(np.uint8))
+        border = np.unique(np.r_[labels[0], labels[-1], labels[:, 0], labels[:, -1]])
+        inside &= cv2.dilate(np.isin(labels, border[border > 0]).astype(np.uint8), np.ones((7, 7), np.uint8)) == 0
+        if exclude is not None:
+            inside &= ~exclude
         _, (iy, ix) = distance_transform_edt(~inside, return_indices=True)
         bled = np.where(inside[..., None], img, cv2.medianBlur(img, 9)[iy, ix])
         c = crop
@@ -376,14 +445,74 @@ def build(kit, cfg):
         rgba = np.dstack([img, a])[crop["y"] : crop["y"] + crop["h"], crop["x"] : crop["x"] + crop["w"]]
         return cv2.resize(rgba, (round(600 * crop["w"] / crop["h"]), 600), interpolation=cv2.INTER_AREA)
 
+    def patch_remains(img, unwarp):
+        """El parche de la manga asoma de canto en el borde de las fotos de frente y de espalda. Con
+        la franja ya va entero: esos restos se tapan con la tela de al lado."""
+        pc = top_cfg["patch"]
+        pts, d = sleeve_seam("cuffTopB>neckB")
+        keep = np.abs(d - pc["at"] * px_per_m) < (pc["size"] / 2 + 0.02) * px_per_m
+        zone = np.zeros(img.shape[:2], np.uint8)
+        cv2.polylines(zone, [unwarp(pts[keep]).astype(np.int32).reshape(-1, 1, 2)], False, 255, 52)
+        b, g, r = (img[..., i].astype(int) for i in range(3))
+        odd = (zone > 0) & ((r > b + 12) | (np.minimum(np.minimum(b, g), r) > 135))
+        return cv2.dilate(odd.astype(np.uint8), np.ones((7, 7), np.uint8)) > 0
+
+    def paste_tops(tex):
+        """Pinta las dos franjas en su hueco de la textura delantera."""
+        side = cv2.imread(str(SRC / top_cfg["side"]))
+        pts, d = sleeve_seam("neckA>cuffTopA")
+        tw, th = round(top_rects["A"]["w"] * TEX), round(d[-1] * TEX)
+        # fila 0 = donde acaba la franja (hombro); última fila = puño. Columna 0 = lado del delantero
+        t = d[-1] - (np.arange(th) + 0.5) / TEX
+        u = ((np.arange(tw) + 0.5) / tw - 0.5) * 2 * top_cfg["band"]
+        mx = (top_cfg["centre"] + u)[None, :].repeat(th, 0).astype(np.float32)
+        my = (top_cfg["cuff"] - t)[:, None].repeat(tw, 1).astype(np.float32)
+        strip = cv2.remap(side, mx, my, cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE).astype(np.float32)
+        # se iguala a la tela de la manga en la textura (ya sin el sombreado de estudio)
+        # tono de referencia: la tela de la propia manga junto a la costura, sin contar los logos
+        inward = np.sign(W / 2 - pts[:, 0].mean())
+        near = np.vstack([pts[:-1] + [inward * k, 4] for k in (14, 20, 26, 32)])
+        at = ((unwarp_f(near) - (crop["x"], crop["y"])) * TEX).astype(int)
+        seen = np.array([tex[y, x] for x, y in at if 0 <= y < tex.shape[0] and 0 <= x < tex.shape[1]])
+        target = np.median(seen[seen.max(axis=1) < 150], axis=0)
+        gray = cv2.GaussianBlur(strip.mean(axis=2), (0, 0), 18 * TEX)
+        strip *= (np.median(gray) / gray)[..., None]
+        strip = np.clip(strip * (target / np.median(strip.reshape(-1, 3), axis=0)), 0, 255)
+        print("franja de manga: tono", target.round(), "desde", np.median(strip.reshape(-1, 3), axis=0).round())
+
+        # parche: su elipse en el primer plano pasa a círculo. Va reflejado porque en esa manga el
+        # delantero (columna 0) queda a la derecha de quien la mira.
+        pc = top_cfg["patch"]
+        photo = cv2.imread(str(SRC / pc["photo"]))
+        size = round(pc["size"] * px_per_m * TEX)
+        g = (np.arange(size) + 0.5) / size * 2 - 1
+        gx, gy = np.meshgrid(g, g)
+        patch = cv2.remap(photo, (pc["centre"][0] - gx * pc["radius"][0]).astype(np.float32), (pc["centre"][1] + gy * pc["radius"][1]).astype(np.float32), cv2.INTER_AREA)
+        alpha = np.clip((0.985 - np.hypot(gx, gy)) * size / 3, 0, 1)[..., None]
+        with_patch = strip.copy()
+        y0, x0 = round((d[-1] - pc["at"] * px_per_m) * TEX - size / 2), round(tw / 2 - size / 2)
+        area = with_patch[y0 : y0 + size, x0 : x0 + size]
+        area[:] = area * (1 - alpha) + patch * alpha
+
+        m = 8  # margen repetido alrededor: que el filtrado de la textura no traiga colores de fuera
+        for name, img in (("A", strip), ("B", with_patch)):
+            r = top_rects[name]
+            assert not cv2.dilate(front_mask, np.ones((25, 25), np.uint8))[int(r["y"]) : int(r["y"] + r["h"]), int(r["x"]) : int(r["x"] + r["w"])].any(), "la franja pisa la camiseta"
+            x, y = round((r["x"] - crop["x"]) * TEX), round((r["y"] - crop["y"]) * TEX)
+            block = cv2.copyMakeBorder(img.astype(np.uint8), m, m, m, m, cv2.BORDER_REPLICATE)
+            tex[y - m : y - m + block.shape[0], x - m : x - m + block.shape[1]] = block
+        return tex
+
     kit_dir = ROOT / "public" / "kit"
     og_dir = ROOT / "src" / "assets" / "og"
     kit_dir.mkdir(parents=True, exist_ok=True)
     og_dir.mkdir(parents=True, exist_ok=True)
     for name, img, mask in (("front", front_img, front_mask), ("back", back_img, back_mask)):
-        tex = texture(img, mask)
+        tex = texture(img, mask, patch_remains(img, unwarp_f if name == "front" else unwarp_b) if top_cfg else None)
         if name == "front" and cfg.get("crest"):
             tex = sharpen_crest(tex, img, cfg["crest"], crop)
+        if name == "front" and top_cfg:
+            tex = paste_tops(tex)
         cv2.imwrite(str(kit_dir / f"{kit}-{name}.webp"), tex, [cv2.IMWRITE_WEBP_QUALITY, 90])
         cv2.imwrite(str(og_dir / f"{kit}-{name}.png"), cutout(img, mask))
         cv2.imwrite(str(BUILD / f"tex-{kit}-{name}.jpg"), cv2.resize(tex, (1024, 1024), interpolation=cv2.INTER_AREA))

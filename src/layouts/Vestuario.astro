@@ -33,7 +33,9 @@ const image = abs(`/og/${player ? player.dorsal : 'vestuario'}.jpg`);
 const canonical = abs(player ? `/dorsal/${player.dorsal}/` : custom ? '/personaliza/' : '/');
 
 const models = ['camiseta-campo', 'camiseta-portero', 'balon', 'bota-negra', 'bota-blanca'];
-const textures = ['/kit/campo-front.webp', '/kit/campo-back.webp', '/kit/portero-front.webp', '/kit/portero-back.webp', '/escudo/sd-huesca.webp'];
+const textures = ['/kit/campo-front.webp', '/kit/campo-back.webp', '/kit/portero-front.webp', '/kit/portero-back.webp'];
+// misma huella que usa el visor al pedirlos (astro.config.mjs): si no coincide la URL, se descargarían dos veces
+declare const __ASSETS__: string;
 
 const count = (pos: string) => SQUAD.filter((p) => p.pos === pos).length;
 const ticker = [
@@ -83,9 +85,9 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
     {/* la escena no arranca hasta tener modelos y texturas: se piden ya, sin esperar al script */}
-    <link rel="preload" as="fetch" crossorigin="anonymous" type="application/json" href={`${base}/kit/dorsal.json`} />
-    {models.map((name) => <link rel="preload" as="fetch" crossorigin="anonymous" type="model/gltf-binary" href={`${base}/models/${name}.glb`} />)}
-    {textures.map((path) => <link rel="preload" as="image" type="image/webp" href={`${base}${path}`} />)}
+    <link rel="preload" as="fetch" crossorigin="anonymous" type="application/json" href={`${base}/kit/dorsal.json?v=${__ASSETS__}`} />
+    {models.map((name) => <link rel="preload" as="fetch" crossorigin="anonymous" type="model/gltf-binary" href={`${base}/models/${name}.glb?v=${__ASSETS__}`} />)}
+    {textures.map((path) => <link rel="preload" as="image" type="image/webp" href={`${base}${path}?v=${__ASSETS__}`} />)}
   </head>
   <body class="overflow-hidden bg-noche font-sans text-hueso antialiased">
     <main
