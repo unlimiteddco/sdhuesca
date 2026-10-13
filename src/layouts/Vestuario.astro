@@ -179,7 +179,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
           </div>
 
           <div
-            class="pointer-events-auto col-span-3 -mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] md:col-span-1 md:mx-0 md:flex-wrap md:justify-end md:gap-1.5 md:overflow-visible md:px-0 [&::-webkit-scrollbar]:hidden"
+            class="pointer-events-auto col-span-3 -mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] max-md:portrait:group-data-[card=open]/app:hidden md:col-span-1 md:mx-0 md:flex-wrap md:justify-end md:gap-1.5 md:overflow-visible md:px-0 [&::-webkit-scrollbar]:hidden"
           >
             <button class={pill} data-filter="" aria-pressed="true">
               Todos <span class="opacity-50 md:hidden xl:inline">{SQUAD.length}</span>
@@ -232,10 +232,11 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
         aria-live="polite"
         data-open="false"
         data-view="player"
-        class="group/card pointer-events-none absolute inset-x-2 bottom-[calc(2.5rem+env(safe-area-inset-bottom))] z-30 translate-y-6 rounded-2xl border border-white/15 bg-noche/55 px-4 pb-4 pt-2.5 opacity-0 shadow-2xl shadow-black/60 backdrop-blur-xl transition-all duration-500 data-[open=true]:pointer-events-auto data-[open=true]:translate-y-0 data-[open=true]:opacity-100 landscape:inset-x-auto landscape:bottom-auto landscape:right-[6vw] landscape:top-1/2 landscape:w-[min(390px,40vw)] landscape:-translate-y-[46%] landscape:bg-white/[0.07] landscape:p-6 landscape:data-[open=true]:-translate-y-1/2"
+        data-more="false"
+        class="group/card pointer-events-none absolute inset-x-2 bottom-[calc(2.5rem+env(safe-area-inset-bottom))] z-30 translate-y-6 rounded-2xl border border-white/15 bg-noche/55 px-4 pb-4 pt-2.5 opacity-0 shadow-2xl shadow-black/60 backdrop-blur-xl transition-all duration-500 data-[open=true]:pointer-events-auto data-[open=true]:translate-y-0 data-[open=true]:opacity-100 landscape:inset-x-auto landscape:bottom-auto landscape:right-[6vw] landscape:top-1/2 landscape:max-h-[calc(100dvh-7rem)] landscape:w-[min(390px,40vw)] landscape:-translate-y-[46%] landscape:overflow-y-auto landscape:overscroll-contain landscape:bg-white/[0.07] landscape:p-6 landscape:data-[open=true]:-translate-y-1/2"
       >
-        <!-- asa: en móvil la hoja se cierra deslizando hacia abajo y cambia de jugador deslizando a los lados -->
-        <div class="mx-auto mb-2 h-1 w-10 rounded-full bg-white/25 landscape:hidden"></div>
+        <!-- asa: en móvil la hoja se amplía deslizando hacia arriba, se cierra hacia abajo y cambia de jugador a los lados -->
+        <div id="card-grip" class="mx-auto -mt-2.5 w-24 cursor-pointer pb-2 pt-2.5 landscape:hidden"><div class="mx-auto h-1 w-10 rounded-full bg-white/25"></div></div>
         <button
           id="card-close"
           class:list={[round, 'absolute right-3 top-3 z-10 h-10 w-10 bg-noche/40 landscape:right-5 landscape:top-5 landscape:h-8 landscape:w-8']}
@@ -281,7 +282,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
               <p class={tileLabel}>Minutos</p>
             </div>
             <div class={tile}>
-              <p class="font-display text-xl leading-none"><span id="st-goles"></span><span id="st-asist" class="ml-1 font-mono text-[9px] text-hueso/50"></span></p>
+              <p class="whitespace-nowrap font-display text-xl leading-none"><span id="st-goles"></span><span id="st-asist" class="ml-1 font-mono text-[9px] text-hueso/50"></span></p>
               <p id="st-goles-label" class={tileLabel}>Goles</p>
             </div>
             <div class={tile}>
@@ -292,18 +293,33 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
               <p class={tileLabel}>Tarjetas</p>
             </div>
           </div>
-          <p class="mt-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-hueso/40 landscape:text-[8px]">
-            Liga · jornada {STATS_INFO.jornada} · {STATS_INFO.fuente} · {STATS_INFO.fecha}
-          </p>
+          <div class="mt-1.5 flex items-center justify-between gap-3">
+            <p class="truncate font-mono text-[9px] uppercase tracking-[0.14em] text-hueso/40 landscape:text-[8px]">
+              Liga · jornada {STATS_INFO.jornada} · {STATS_INFO.fuente}<span class="portrait:hidden"> · {STATS_INFO.fecha}</span>
+            </p>
+            {/* en móvil la ficha abre compacta para que la camiseta se vea grande; el resto se despliega */}
+            <button
+              id="card-more"
+              type="button"
+              aria-expanded="false"
+              aria-controls="card-data"
+              class="-my-2 flex shrink-0 items-center gap-1 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-oro landscape:hidden"
+            >
+              <span class="group-data-[more=true]/card:hidden">Más datos</span>
+              <span class="hidden group-data-[more=true]/card:inline">Menos</span>
+              <svg viewBox="0 0 16 16" class="h-3 w-3 transition-transform group-data-[more=true]/card:rotate-180" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10l5-5 5 5"></path></svg>
+            </button>
+          </div>
 
           <dl
-            class="mt-2 grid grid-cols-2 gap-x-5 border-t border-white/10 font-mono text-[11px] uppercase tracking-[0.12em] landscape:mt-4 landscape:grid-cols-1 landscape:tracking-[0.14em] [&>div]:flex [&>div]:flex-col [&>div]:gap-0.5 [&>div]:border-b [&>div]:border-white/10 [&>div]:py-1.5 landscape:[&>div]:flex-row landscape:[&>div]:justify-between landscape:[&>div]:gap-4 landscape:[&>div]:py-2 [&_dd]:truncate [&_dd]:text-hueso landscape:[&_dd]:text-right [&_dt]:text-[9px] [&_dt]:text-hueso/45 landscape:[&_dt]:text-[11px]"
+            id="card-data"
+            class="mt-2 grid grid-cols-2 portrait:group-data-[more=false]/card:hidden gap-x-5 border-t border-white/10 font-mono text-[11px] uppercase tracking-[0.12em] landscape:mt-4 landscape:grid-cols-1 landscape:tracking-[0.14em] [&>div]:flex [&>div]:flex-col [&>div]:gap-0.5 [&>div]:border-b [&>div]:border-white/10 [&>div]:py-1.5 landscape:[&>div]:flex-row landscape:[&>div]:justify-between landscape:[&>div]:gap-4 landscape:[&>div]:py-2 [&_dd]:truncate [&_dd]:text-hueso landscape:[&_dd]:text-right [&_dt]:text-[9px] [&_dt]:text-hueso/45 landscape:[&_dt]:text-[11px]"
           >
             <div><dt>Posición</dt><dd id="card-rol"></dd></div>
             <div><dt>Edad</dt><dd id="card-edad"></dd></div>
             <div><dt>Nacionalidad</dt><dd id="card-pais"></dd></div>
             <div><dt>Procedencia</dt><dd id="card-proc"></dd></div>
-            <div class="hidden landscape:flex"><dt>Contrato</dt><dd id="card-contrato"></dd></div>
+            <div><dt>Contrato</dt><dd id="card-contrato"></dd></div>
           </dl>
 
           <div class="mt-3 flex items-center gap-2 landscape:mt-4">
@@ -442,7 +458,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
               <svg viewBox="0 0 16 16" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2.5 13.5l1-3.5 7-7 2.5 2.5-7 7zM9.5 4l2.5 2.5"></path></svg>
               Personaliza la tuya
             </button>
-            <button id="sound" class:list={[round, 'group h-10 w-10 md:h-9 md:w-9']} aria-pressed="false" aria-label="Sonido ambiente">
+            <button id="sound" class:list={[round, 'group h-11 w-11 md:h-9 md:w-9']} aria-pressed="false" aria-label="Sonido ambiente">
               <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M2.5 6.2v3.6h2.4L8.2 13V3L4.9 6.2z"></path>
                 <path class="hidden group-aria-pressed:block" d="M10.6 5.6a3.4 3.4 0 010 4.8M12.4 3.8a6 6 0 010 8.4"></path>
@@ -604,21 +620,30 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
       // ---------------------------------------------------------------- sonido
       const sound = new Soundscape();
       const soundBtn = $('#sound');
-      const setSound = (on: boolean) => {
-        sound.setEnabled(on);
+      let wantsSound = false;
+      const setSound = (on: boolean, confirm = false) => {
+        wantsSound = false;
+        sound.setEnabled(on, confirm);
         soundBtn.setAttribute('aria-pressed', String(on));
         soundBtn.setAttribute('aria-label', on ? 'Silenciar sonido ambiente' : 'Activar sonido ambiente');
         try {
           localStorage.setItem('vestuario-sonido', on ? '1' : '0');
         } catch {}
       };
-      soundBtn.addEventListener('click', () => setSound(!sound.enabled));
-      let wantsSound = false;
+      soundBtn.addEventListener('click', () => setSound(!sound.enabled, true));
       try {
         wantsSound = localStorage.getItem('vestuario-sonido') === '1';
       } catch {}
-      // quien lo dejó encendido lo recupera con su primer toque (el navegador exige un gesto)
-      if (wantsSound) addEventListener('pointerdown', () => !sound.enabled && setSound(true), { once: true });
+      // Quien lo dejó encendido lo recupera con su primer toque. El navegador solo deja arrancar el audio
+      // al terminar un gesto (no al empezarlo), y el móvil lo suspende al cambiar de app: cada gesto lo reanuda.
+      // El propio botón queda fuera: su clic ya decide.
+      const gesture = (e: Event) => {
+        if (soundBtn.contains(e.target as Node)) return;
+        if (wantsSound) setSound(true);
+        else if (sound.enabled) sound.unlock();
+      };
+      addEventListener('pointerup', gesture);
+      addEventListener('keydown', gesture);
 
       // las camisetas se pintan en un canvas: hay que esperar a las tipografías
       await Promise.all([
@@ -628,14 +653,22 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
       ]).catch(() => {});
       bar.style.width = '30%';
 
+      // hoja compacta o con todos los datos (móvil en vertical)
+      const setMore = (on: boolean) => {
+        if (card.dataset.more === String(on)) return;
+        card.dataset.more = String(on);
+        $('#card-more').setAttribute('aria-expanded', String(on));
+        requestAnimationFrame(fitStage);
+      };
+
       // hueco que dejan cabecera, ficha y pie: ahí se encaja la camiseta abierta
       const fitStage = () => {
         if (!locker) return;
         const w = innerWidth, h = innerHeight;
         const top = (header.getBoundingClientRect().bottom - parseFloat(getComputedStyle(header).paddingBottom) + 6) / h;
         locker.stageRect = matchMedia('(orientation: landscape)').matches
-          ? { x0: 0, y0: top, x1: card.offsetLeft / w, y1: ($('footer').offsetTop + 28) / h }
-          : { x0: 0, y0: top, x1: 1, y1: card.offsetTop / h };
+          ? { x0: 0, y0: top, x1: card.offsetLeft / w, y1: ($('footer').offsetTop + 28) / h, tuck: 0 }
+          : { x0: 0, y0: top, x1: 1, y1: card.offsetTop / h, tuck: 0.2 };
       };
 
       let locker: LockerRoom | undefined;
@@ -653,6 +686,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
           },
           onSelect(p) {
             const target: Target = p ? (p.id === 'custom' ? 'custom' : p) : null;
+            if (!target) setMore(false);
             card.dataset.open = String(!!target);
             card.dataset.view = target === 'custom' ? 'custom' : 'player';
             app.dataset.card = target ? 'open' : '';
@@ -728,6 +762,8 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
           });
         }
         $('#card-close').addEventListener('click', () => room.select(null));
+        $('#card-more').addEventListener('click', () => setMore(card.dataset.more !== 'true'));
+        $('#card-grip').addEventListener('click', () => current !== 'custom' && setMore(card.dataset.more !== 'true'));
         $('#card-prev').addEventListener('click', () => room.step(-1));
         $('#card-next').addEventListener('click', () => room.step(1));
         $('#card-share').addEventListener('click', () => {
@@ -745,7 +781,8 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
           if (!swipe) return;
           const dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y;
           swipe = null;
-          if (dy > 70 && dy > Math.abs(dx) * 1.5) room.select(null);
+          if (dy < -50 && -dy > Math.abs(dx) * 1.5 && current !== 'custom') setMore(true);
+          else if (dy > 70 && dy > Math.abs(dx) * 1.5) card.dataset.more === 'true' ? setMore(false) : room.select(null);
           else if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && current !== 'custom') room.step(dx < 0 ? 1 : -1);
         }, { passive: true });
 

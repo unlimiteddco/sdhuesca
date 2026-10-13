@@ -12,14 +12,40 @@ export class Soundscape {
   private lastTick = 0;
   enabled = false;
 
-  /** Debe llamarse desde un gesto (clic) la primera vez */
-  setEnabled(on: boolean) {
+  /** Enciende o apaga. Encender solo funciona dentro de un gesto (clic, fin de toque, tecla) */
+  setEnabled(on: boolean, confirm = false) {
     this.enabled = on;
-    if (on && !this.ctx) this.start();
-    if (this.ctx && this.master) {
-      if (on) void this.ctx.resume();
-      this.master.gain.setTargetAtTime(on ? 0.9 : 0, this.ctx.currentTime, 0.08);
+    if (on) {
+      this.unlock();
+      // un toque de percha al encender: sin él no se sabe si ha funcionado hasta mover la barra
+      if (confirm) void this.ctx!.resume().then(() => this.enabled && this.clink(0.035), () => {});
     }
+    if (!this.ctx || !this.master) return;
+    this.master.gain.setTargetAtTime(on ? 0.9 : 0, this.ctx.currentTime, 0.08);
+    if (!on) {
+      // apagado del todo: el móvil recupera su sesión de audio (la música que hubiera de fondo)
+      const ctx = this.ctx;
+      setTimeout(() => !this.enabled && void ctx.suspend().catch(() => {}), 400);
+      this.session('auto');
+    }
+  }
+
+  /**
+   * Arranca o reanuda el audio. Hay que llamarlo dentro de un gesto; no hace daño repetirlo:
+   * el móvil suspende el audio al cambiar de app y solo lo devuelve con otro gesto.
+   */
+  unlock() {
+    this.session('playback');
+    if (!this.ctx) this.start();
+    if (this.ctx!.state !== 'running') void this.ctx!.resume().catch(() => {});
+  }
+
+  /** En iPhone, el audio web por defecto se calla con el interruptor lateral de silencio; como «playback», no */
+  private session(type: 'auto' | 'playback') {
+    try {
+      const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+      if (session) session.type = type;
+    } catch {}
   }
 
   private start() {

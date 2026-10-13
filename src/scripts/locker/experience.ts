@@ -313,20 +313,23 @@ export class LockerRoom {
     this.bounds = min < max ? { min, max } : { min: 0, max: 0 };
   }
 
-  /** Hueco libre de la pantalla (0..1) donde se muestra la camiseta abierta; lo fija la interfaz */
-  stageRect = { x0: 0.02, y0: 0.12, x1: 0.55, y1: 0.88 };
+  /** Hueco de pantalla (0..1) que la interfaz deja a la camiseta abierta. `tuck`: parte del alto que puede quedar tras la ficha */
+  stageRect = { x0: 0.02, y0: 0.12, x1: 0.55, y1: 0.88, tuck: 0 };
 
   /** Pose en primer plano: la camiseta se encaja en `stageRect` */
   private stagePose(out: THREE.Vector3) {
     const d = 2.1, r = this.stageRect;
     const vh = 2 * d * this.tanHalf, vw = vh * this.camera.aspect;
     const height = 0.03 - this.assets.size.bottom, width = this.assets.size.width + 0.04;
-    const scale = Math.max(0.2, Math.min(1.25, ((r.y1 - r.y0) * vh * 0.9) / height, ((r.x1 - r.x0) * vw * 0.9) / width));
-    out.set(((r.x0 + r.x1) / 2 - 0.5) * vw, CAM.y + (0.5 - (r.y0 + r.y1) / 2) * vh + (height / 2 - 0.03) * scale, CAM.z - d);
+    const rh = (r.y1 - r.y0) * vh, rw = (r.x1 - r.x0) * vw;
+    const scale = Math.max(0.2, Math.min(1.25, (rh * 0.9) / height / (1 - r.tuck), (rw * 0.92) / width));
+    // si cabe entera va centrada; si no (móvil), cuelga desde arriba y el bajo se esconde tras la ficha
+    const y = height * scale <= rh * 0.95
+      ? CAM.y + (0.5 - (r.y0 + r.y1) / 2) * vh + (height / 2 - 0.03) * scale
+      : CAM.y + (0.5 - r.y0) * vh - rh * 0.03 - 0.03 * scale;
+    out.set(((r.x0 + r.x1) / 2 - 0.5) * vw, y, CAM.z - d);
     return { pos: out, scale };
   }
-
-  // ------------------------------------------------------------- interacción
 
   private bind() {
     const c = this.canvas;
