@@ -722,13 +722,22 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
       fitStage();
       addEventListener('resize', fitStage);
 
+      // la escena ocupa justo la pantalla; si algo la desplazara (un foco, un ancla), vuelve a su sitio
+      app.addEventListener('scroll', () => app.scrollTo(0, 0));
+
       const filters = [...document.querySelectorAll<HTMLButtonElement>('[data-filter]')];
       const setFilter = (pos: Pos | null) => {
         locker?.setFilter(pos);
         for (const b of filters) {
           const on = (b.dataset.filter || null) === pos;
           b.setAttribute('aria-pressed', String(on));
-          if (on) b.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+          // en móvil la fila de filtros se desliza: se centra el elegido. Solo se mueve esa fila:
+          // scrollIntoView arrastraba también la página entera y la dejaba desplazada a la izquierda
+          const row = b.parentElement!;
+          if (on && row.scrollWidth > row.clientWidth) {
+            const r = b.getBoundingClientRect(), box = row.getBoundingClientRect();
+            row.scrollTo({ left: row.scrollLeft + r.left - box.left - (box.width - r.width) / 2, behavior: 'smooth' });
+          }
         }
       };
 
