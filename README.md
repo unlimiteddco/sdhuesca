@@ -1,32 +1,51 @@
-# El vestuario del Huesca en 3D
+# Vestuarios en 3D
 
-Las camisetas de la SD Huesca 2026/27 colgadas en un vestuario 3D: una percha por jugador, ficha con estadísticas y un personalizador que lleva a la tienda oficial con tu nombre y dorsal ya puestos.
+Las camisetas de un club colgadas en un vestuario 3D: una percha por jugador, ficha con estadísticas y un personalizador que lleva a la tienda oficial con tu nombre y dorsal ya puestos.
 
-Tributo no oficial, sin relación con la SD Huesca ni con la RFEF. Escudo, equipaciones, fotos y marcas pertenecen a sus titulares.
+Un mismo código y una web por club:
 
-**https://sdhuesca.bellostas.studio** · Astro, Tailwind y Three.js · Diseñado y desarrollado por [Bellostas Studio](https://bellostas.studio)
+| Club | Carpeta | Web |
+|---|---|---|
+| SD Huesca | `clubs/huesca` | https://sdhuesca.bellostas.studio |
+| Real Madrid | `clubs/madrid` | https://realmadrid.bellostas.studio |
+
+Tributos no oficiales, sin relación con los clubes ni con las competiciones. Escudos, equipaciones, fotos y marcas pertenecen a sus titulares.
+
+Astro, Tailwind y Three.js · Diseñado y desarrollado por [Bellostas Studio](https://bellostas.studio)
 
 ## Desarrollo
 
 ```bash
 npm install
-npm run dev      # http://localhost:4321
-npm run build    # sitio estático en dist/
-npm run stats    # actualiza las estadísticas de liga (Transfermarkt)
+npm run dev                      # Huesca (por defecto), http://localhost:4321
+CLUB=madrid npm run dev          # otro club
+CLUB=madrid npm run build        # sitio estático en dist/
+CLUB=madrid npm run stats        # actualiza las estadísticas de liga (Transfermarkt)
 ```
+
+## Qué hay en la carpeta de cada club
+
+- `club.json`: textos, colores del vestuario, serigrafía (letra, medidas, cifras), tienda (producto, variantes y propiedades del carrito) y fuente de estadísticas.
+- `theme.css`: colores de la interfaz y letras de serigrafía.
+- `squad.ts` (plantilla) y `stats.ts` (generado por `npm run stats`).
+- `kits.py`: fotos y puntos clave de cada equipación para generar las camisetas 3D.
+- `fotos/`: fotos de producto de origen (no entran en la web).
+- `public/`: lo que se publica (modelos, texturas, retratos, escudo); `og/` y `fonts/`: tarjetas de compartir y letras.
 
 ## Despliegue
 
-El `Dockerfile` compila el sitio y lo sirve con nginx en el puerto 80 (compresión, caché y página 404 en `nginx.conf`). En Dokploy: tipo de compilación **Dockerfile** y dominio apuntando al puerto 80.
+El `Dockerfile` compila un club y lo sirve con nginx en el puerto 80 (compresión, caché y página 404 en `nginx.conf`). En Dokploy, una aplicación por club desde este mismo repositorio: tipo de compilación **Dockerfile**, en *Build Args* `CLUB=madrid` (sin nada, Huesca), y el dominio apuntando al puerto 80.
 
-Tras cada jornada: `npm run stats`, commit y push.
+Tras cada jornada: `CLUB=<club> npm run stats`, commit y push.
 
-## Datos
+## Camisetas 3D
 
-- Plantilla: `src/data/squad.ts` (web oficial del club).
-- Estadísticas: `src/data/stats.ts`, generado por `tools/stats.mjs`.
-- Tienda: `src/data/store.ts` (producto y variantes de la tienda oficial; revisar si el club cambia el producto).
+Salen de las fotos de producto:
 
-## Modelos 3D
+```bash
+python tools/kit/prep.py --club madrid             # patrón y texturas (frente, espalda y cara exterior de las mangas)
+blender -b -P tools/kit/sim.py -- --club madrid --kit campo   # simulación de tela en la percha → .glb
+python tools/kit/lettering.py --club madrid        # cifras del dorsal y letras de los nombres
+```
 
-Las camisetas salen de las fotos de producto: `tools/kit/prep.py` saca el patrón y las texturas (frente y espalda; la cara exterior de las mangas, de la foto lateral), y `tools/kit/sim.py` las cuelga de la percha con el simulador de tela de Blender. `tools/kit/lettering.py` prepara la serigrafía: las cifras del dorsal (los dibujos de la tienda oficial, con el escudo a una tinta) y la letra de los nombres (Archivo, OFL, ajustada a la oficial). `tools/kit/props.py` convierte el balón ([Poly Haven](https://polyhaven.com/a/football), CC0) y las botas. Solo hace falta para regenerar los modelos; los `.glb` ya están en `public/models/`.
+`tools/kit/props.py` convierte el balón ([Poly Haven](https://polyhaven.com/a/football), CC0) y las botas. Las letras de serigrafía son fuentes libres (Archivo y Saira, OFL) ajustadas en ancho y grosor a las oficiales.

@@ -1,0 +1,17 @@
+/* Colores y letra de serigrafía del club. Los nombres de color los usa toda la interfaz. */
+:root {
+  --color-fondo: #070504;
+  --color-madera: #1b110a;
+  --color-claro: #f3eadb;
+  --color-primario: #1a47a8;
+  --color-acento: #a5152f;
+  --color-acento-vivo: #e02b4b;
+  --color-dorado: #e2b65e;
+}
+
+/* letra de los nombres serigrafiados: Archivo (OFL) condensada y ajustada a la oficial */
+@font-face {
+  font-family: "Archivo Dorsal";
+  src: url("./fonts/archivo-dorsal.woff2") format("woff2");
+  font-display: block;
+}

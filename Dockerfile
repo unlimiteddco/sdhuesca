@@ -1,5 +1,8 @@
-# Compila el sitio estático con Astro y lo sirve con nginx (puerto 80)
+# Compila el sitio estático de un club con Astro y lo sirve con nginx (puerto 80).
+# El club se elige al construir: --build-arg CLUB=madrid (en Dokploy, «Build Args»). Por defecto, huesca.
 FROM node:22-slim AS build
+ARG CLUB=huesca
+ENV CLUB=$CLUB
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci

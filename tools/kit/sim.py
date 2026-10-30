@@ -1,7 +1,8 @@
 """Paso 2: cuelga el patrón de una percha con el simulador de tela de Blender.
 
-Uso: blender -b -P tools/kit/sim.py -- [--kit campo|portero] [--preview]
-Lee build/panels-<kit>.json y escribe public/models/camiseta-<kit>.glb (camiseta + percha + gancho).
+Uso: blender -b -P tools/kit/sim.py -- [--club <club>] [--kit campo|portero] [--preview]
+Lee build/<club>/panels-<kit>.json y escribe clubs/<club>/public/models/camiseta-<kit>.glb
+(camiseta + percha + gancho).
 El origen del modelo es el centro de la barra de la que cuelga el gancho.
 
 La prenda son dos paneles (pecho y espalda) cosidos por los hombros y unidos por un
@@ -22,6 +23,8 @@ HERE = Path(__file__).parent
 ROOT = HERE.parent.parent
 PREVIEW = "--preview" in sys.argv
 KIT = sys.argv[sys.argv.index("--kit") + 1] if "--kit" in sys.argv else "campo"
+CLUB = sys.argv[sys.argv.index("--club") + 1] if "--club" in sys.argv else "huesca"
+BUILD = HERE / "build" / CLUB
 
 FRAMES = 170  # los moldes crecen durante los primeros 50; el resto es para que la tela se asiente
 GUSSET = 0.06  # anchura del fuelle lateral (m)
@@ -46,7 +49,7 @@ def smoothstep(a, b, v):
     return u * u * (3 - 2 * u)
 
 
-data = json.loads((HERE / "build" / f"panels-{KIT}.json").read_text())
+data = json.loads((BUILD / f"panels-{KIT}.json").read_text())
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
 scene.frame_start, scene.frame_end = 1, FRAMES
@@ -176,6 +179,9 @@ bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 bm.faces.ensure_lookup_table()
 if sum(bm.faces[i].normal.y for i in range(n_front)) < 0:
     bmesh.ops.reverse_faces(bm, faces=bm.faces)
+# vértices que no forman parte de ninguna cara (un punto del patrón que se quedó sin triángulo):
+# sueltos caerían solos por la gravedad y estirarían todo; van sujetos y, sin caras, no se ven
+loose = [v.index for v in bm.verts if not v.link_faces]
 bm.to_mesh(mesh)
 bm.free()
 shirt = bpy.data.objects.new("camiseta", mesh)
@@ -186,6 +192,7 @@ pin = shirt.vertex_groups.new(name="pin")
 pinned = [i for i in range(count) if owner[i] == 3 and abs(xy[i, 0]) < NECK + 0.05]
 # el canalé del cuello mantiene su forma
 pinned += data["panels"]["front"]["neck"] + data["panels"]["back"]["neck"]
+pinned += loose
 pin.add(pinned, 1.0, "REPLACE")
 
 # dobladillos de mangas y bajo: tela doble, mucho más rígida al plegarse (sin esto el borde se riza)
@@ -305,6 +312,11 @@ for n, ids in enumerate(TOPS):
     inner_top = top_seam[int(len(top_seam) * 0.82)]
     c0, c1 = (inner_top + arm) / 2, (top_seam[0] + cuff_bottom) / 2  # eje: de la sisa al centro del puño
     h0, h1 = np.linalg.norm(inner_top - arm) / 2, np.linalg.norm(top_seam[0] - cuff_bottom) / 2
+    if arm[1] > cuff_bottom[1] + 0.03:
+        # Axila marcada muy por encima del puño: la manga cuelga pegada al costado (fotos con los brazos
+        # bajados). Cualquier molde dentro acaba empujando la tela del cuerpo y la simulación se encoge;
+        # esa manga cuelga sin molde, con la franja de arriba como cara exterior.
+        continue
     turn = -sign * math.radians(SLEEVE_DROOP)
     axis = np.array([[math.cos(turn), -math.sin(turn)], [math.sin(turn), math.cos(turn)]]) @ (c1 - c0)
     across = np.array([-axis[1], axis[0]]) / np.linalg.norm(axis)
@@ -392,7 +404,7 @@ for f in range(1, FRAMES + 1):
         # balanceo del bajo: si no tiende a cero, la prenda no ha terminado de asentarse
         co = np.array([v.co[:] for v in shirt.evaluated_get(bpy.context.evaluated_depsgraph_get()).data.vertices])
         low = co[:, 2] < co[:, 2].min() + 0.08
-        print("frame", f, "bajo: y media %.3f max %.3f min %.3f" % (co[low, 1].mean(), co[low, 1].max(), co[low, 1].min()), flush=True)
+        print("frame", f, "bajo: y media %.3f max %.3f min %.3f · alto %.3f" % (co[low, 1].mean(), co[low, 1].max(), co[low, 1].min(), co[:, 2].max() - co[:, 2].min()), flush=True)
 
 dg = bpy.context.evaluated_depsgraph_get()
 final = bpy.data.meshes.new_from_object(shirt.evaluated_get(dg), depsgraph=dg)
@@ -538,7 +550,7 @@ scene.frame_set(FRAMES)
 for o in scene.objects:
     o.select_set(o in (result, hanger, hook_obj))
 bpy.context.view_layer.objects.active = result
-out = ROOT / "public" / "models"
+out = ROOT / "clubs" / CLUB / "public" / "models"
 out.mkdir(parents=True, exist_ok=True)
 bpy.ops.export_scene.gltf(
     filepath=str(out / f"camiseta-{KIT}.glb"),
@@ -567,7 +579,7 @@ if "--forms" in sys.argv:  # depuración: dónde quedan percha y moldes respecto
     result.hide_render = True
 
 if PREVIEW:
-    img = bpy.data.images.load(str(HERE / "build" / f"atlas-{KIT}.jpg"))
+    img = bpy.data.images.load(str(BUILD / f"atlas-{KIT}.jpg"))
     mat.use_nodes = True
     nodes, links = mat.node_tree.nodes, mat.node_tree.links
     tex = nodes.new("ShaderNodeTexImage")
@@ -590,5 +602,5 @@ if PREVIEW:
         a = math.radians(ang)
         cam.location = centre + Vector((math.sin(a) * 1.75, -math.cos(a) * 1.75, 0.05))
         cam.rotation_euler = (centre - cam.location).to_track_quat("-Z", "Y").to_euler()
-        scene.render.filepath = str(HERE / "build" / f"sim-{KIT}-{name}.png")
+        scene.render.filepath = str(BUILD / f"sim-{KIT}-{name}.png")
         bpy.ops.render.render(write_still=True)

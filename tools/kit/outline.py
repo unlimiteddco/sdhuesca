@@ -11,11 +11,12 @@ import cv2
 import numpy as np
 
 
-def shirt_mask(img, cuts=()):
+def shirt_mask(img, cuts=(), close=9):
     """Máscara y contorno exterior. `cuts` son polilíneas (px) que separan la manga del cuerpo
-    allí donde en la foto se tocan y el contorno no las distingue."""
+    allí donde en la foto se tocan y el contorno no las distingue. `close` (px) rellena muescas del
+    borde: un parche con ribete blanco en el canto de la manga se confunde con el fondo."""
     nonwhite = (img.min(axis=2) < 243).astype(np.uint8) * 255
-    nonwhite = cv2.morphologyEx(nonwhite, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
+    nonwhite = cv2.morphologyEx(nonwhite, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (close, close)))
     cnts, _ = cv2.findContours(nonwhite, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     mask = np.zeros(img.shape[:2], np.uint8)
     cv2.drawContours(mask, [max(cnts, key=cv2.contourArea)], -1, 255, -1)
@@ -25,7 +26,10 @@ def shirt_mask(img, cuts=()):
             cv2.polylines(slit, [np.array(cut, np.int32).reshape(-1, 1, 2)], False, 255, 5)
         # el hueco blanco entre manga y cuerpo por el que pasa el corte tampoco es prenda: si se
         # quedara dentro de la máscara, el costado saldría con el blanco del fondo
-        n, labels = cv2.connectedComponents((img.min(axis=2) >= 232).astype(np.uint8))
+        # «fondo» relativo al blanco real de la foto: con una camiseta blanca, un umbral fijo se
+        # comería la tela
+        bg = float(np.median(np.r_[img[0].min(axis=1), img[-1].min(axis=1), img[:, 0].min(axis=1), img[:, -1].min(axis=1)]))
+        n, labels = cv2.connectedComponents((img.min(axis=2) >= max(232, bg - 8)).astype(np.uint8))
         gap = np.isin(labels, np.setdiff1d(np.unique(labels[slit > 0]), [0]))
         mask[cv2.dilate(gap.astype(np.uint8), np.ones((3, 3), np.uint8)) > 0] = 0
         mask[slit > 0] = 0

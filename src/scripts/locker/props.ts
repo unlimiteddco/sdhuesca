@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import type { Player } from '../../data/squad';
+import { CLUB } from '../../club';
+import type { Player } from '../../data/players';
+
+const T = CLUB.room.tag;
 
 const BENCH_TOP = 0.615;
 
@@ -18,7 +21,7 @@ function texture(c: HTMLCanvasElement) {
 
 const tagGeometry = new THREE.CylinderGeometry(0.023, 0.023, 0.0026, 36).rotateX(Math.PI / 2);
 const linkGeometry = new THREE.TorusGeometry(0.0065, 0.0011, 6, 18);
-const brassEdge = new THREE.MeshStandardMaterial({ color: 0xb98b45, roughness: 0.35, metalness: 1 });
+const brassEdge = new THREE.MeshStandardMaterial({ color: T.edge, roughness: 0.35, metalness: 1 });
 
 /** Chapa de latón con el dorsal, colgada del gancho de cada percha. La del capitán es amarilla con una C. */
 export function createTag(player: Player): THREE.Group {
@@ -26,13 +29,9 @@ export function createTag(player: Player): THREE.Group {
   c.width = c.height = 160;
   const ctx = c.getContext('2d')!;
   const g = ctx.createRadialGradient(62, 52, 8, 80, 80, 86);
-  if (player.capitan) {
-    g.addColorStop(0, '#ffe36b');
-    g.addColorStop(1, '#d9a312');
-  } else {
-    g.addColorStop(0, '#e8c98a');
-    g.addColorStop(1, '#8f6a30');
-  }
+  const [light, dark] = player.capitan ? T.captain : T.face;
+  g.addColorStop(0, light);
+  g.addColorStop(1, dark);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 160, 160);
   ctx.strokeStyle = 'rgba(40,24,6,0.55)';
@@ -47,7 +46,7 @@ export function createTag(player: Player): THREE.Group {
   // grabado: sombra clara debajo y relleno oscuro
   ctx.fillStyle = 'rgba(255,240,200,0.5)';
   ctx.fillText(label, 80, 113);
-  ctx.fillStyle = player.capitan ? '#0b1a3f' : '#2b1c0a';
+  ctx.fillStyle = player.capitan ? T.captainInk : T.ink;
   ctx.fillText(label, 80, 111);
 
   const face = new THREE.MeshStandardMaterial({ map: texture(c), roughness: player.capitan ? 0.3 : 0.42, metalness: player.capitan ? 0.2 : 0.9 });
@@ -72,8 +71,8 @@ export function createTag(player: Player): THREE.Group {
 export function addBenchProps(scene: THREE.Scene, balls: THREE.Object3D[], boots: THREE.Object3D[]) {
   const props = new THREE.Group();
   const towelGeo = new RoundedBoxGeometry(0.34, 0.042, 0.25, 4, 0.019);
-  const towelMat = (color: number) => new THREE.MeshStandardMaterial({ color, roughness: 1 });
-  const white = towelMat(0xe9e4da), blue = towelMat(0x1a47a8), red = towelMat(0x8f1228);
+  const towelMat = (color: string) => new THREE.MeshStandardMaterial({ color, roughness: 1 });
+  const [white, blue, red] = CLUB.room.towels.map(towelMat);
 
   const ball = (model: THREE.Object3D, x: number, z: number, spin: number) => {
     const m = model.clone();

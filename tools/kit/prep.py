@@ -1,14 +1,16 @@
 """Paso 1: de las fotos de producto al patrón de cada camiseta.
 
-Para cada kit (campo, portero) lee su foto de pecho y de espalda y genera:
-  build/panels-<kit>.json     malla 2D (delantero + espalda + fuelles laterales) con UV
-  public/kit/<kit>-*.webp     texturas recortadas, sin fondo y sin sombras de estudio
-  src/assets/og/<kit>-*.png   recortes para las imágenes de compartir
-  src/data/kit.json           recorte y posición del nombre y el dorsal de cada kit
+Para cada kit del club (campo, portero) lee su foto de pecho y de espalda y genera:
+  build/<club>/panels-<kit>.json      malla 2D (delantero + espalda + fuelles) con UV
+  clubs/<club>/public/kit/<kit>-*.webp  texturas recortadas, sin fondo y sin sombras de estudio
+  clubs/<club>/og/<kit>-*.png          recortes para las imágenes de compartir
+  clubs/<club>/kit.json                recorte y posición del nombre y el dorsal de cada kit
 
-Uso: python tools/kit/prep.py [kit ...]   (necesita numpy, opencv, scipy, pillow)
-Para un kit nuevo: python tools/kit/outline.py <foto> y anotar aquí sus puntos clave.
+Uso: python tools/kit/prep.py [--club <club>] [kit ...]   (necesita numpy, opencv, scipy, pillow)
+Los kits se configuran en clubs/<club>/kits.py. Para uno nuevo: python tools/kit/outline.py <foto>
+y anotar allí sus puntos clave.
 """
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -23,8 +25,11 @@ from outline import shirt_mask  # módulo local tools/kit/outline.py
 
 HERE = Path(__file__).parent
 ROOT = HERE.parent.parent
-BUILD = HERE / "build"
-SRC = HERE / "src"
+CLUBS = ROOT / "clubs"
+# club de trabajo: --club <club> (por defecto, huesca). Fotos en clubs/<club>/fotos; intermedios en build/<club>
+CLUB = sys.argv[sys.argv.index("--club") + 1] if "--club" in sys.argv else "huesca"
+BUILD = HERE / "build" / CLUB
+SRC = CLUBS / CLUB / "fotos"
 SHIRT_HEIGHT = 0.775  # metros, del cuello al bajo de la espalda
 EDGE = 0.0085  # metros, tamaño de triángulo
 TEX = 2  # px de textura por px de foto
@@ -35,65 +40,14 @@ KEYS = ["neckA", "cuffTopA", "cuffBotA", "hemA", "hemB", "cuffBotB", "cuffTopB",
 SEAMS = [("neckA", "cuffTopA"), ("cuffBotA", "hemA"), ("hemB", "cuffBotB"), ("cuffTopB", "neckB")]
 OPENINGS = [("cuffTopA", "cuffBotA"), ("hemA", "hemB"), ("cuffBotB", "cuffTopB"), ("neckB", "neckA")]
 
-KITS = {
-    # Primera equipación 2026/27, manga corta
-    "campo": dict(
-        front="front.webp",
-        back="back.webp",
-        back_pts=[(343, 80), (70, 477), (227, 496), (242, 998), (689, 989), (677, 480), (823, 465), (537, 74)],
-        # foto frontal SIN espejar: [neckL, cuffOutL, cuffInL, hemL, hemR, cuffInR, cuffOutR, neckR]
-        front_pts=[(348, 91), (104, 471), (247, 479), (220, 1018), (697, 1010), (660, 483), (807, 473), (543, 85)],
-        neck=None,  # el escote se detecta solo (interior gris de la espalda)
-        cuts=dict(front=[], back=[]),
-        crop=dict(x=50, y=45, w=800, h=1035),
-        delight=16,
-        crest=dict(detail="escudo-detalle.webp", detail_roi=(150, 330, 640, 800), roi=(548, 212, 672, 328)),
-        ink="#f7f5ee",
-        edge="#0c0c10",
-        lining="#1f3f5c",  # color del interior de la prenda (se ve por el cuello)
-        text_cx=450,  # la tienda oficial centra la serigrafía en la foto, no en el cuello
-        # Cara exterior de la manga. De frente y de espalda se ve de canto, así que el patrón que sale
-        # de esas fotos se queda sin ella: se añade como una franja entre delantero y espalda, desde
-        # el puño hacia el hombro, con la tela de la foto lateral y el parche de su primer plano.
-        sleeve_top=dict(
-            length=0.225,  # metros de costura que cubre, contados desde el puño
-            width=0.084,  # ancho de la franja: lo que mide el parche más un margen
-            side="lateral.webp",  # foto lateral (manga izquierda): eje de la manga, borde del puño y media banda lisa entre los dos logos
-            centre=496, cuff=490, band=41,
-            # parche de la manga derecha: su elipse en el primer plano, a qué distancia del puño va y cuánto mide
-            patch=dict(photo="manga-rfef.webp", centre=(336, 706), radius=(187, 211), at=0.086, size=0.078),
-        ),
-    ),
-    # Tercera equipación de portero (tienda oficial, 2025/26), manga larga con cuello polo. Es la
-    # naranja, el color con el que posan los porteros en las fotos oficiales de la plantilla
-    "portero": dict(
-        front="portero-naranja/01.jpg",
-        back="portero-naranja/02.jpg",
-        back_pts=[(333, 120), (64, 1021), (160, 1021), (200, 1039), (727, 1016), (753, 1012), (857, 1008), (583, 122)],
-        front_pts=[(330, 129), (56, 1033), (167, 1036), (200, 1035), (703, 1040), (727, 1054), (806, 1051), (584, 114)],
-        # escote delantero a mano: solapas del polo, interior visible y pico
-        neck=[(330, 129), (353, 100), (368, 85), (375, 88), (375, 108), (375, 150), (377, 181), (416, 194), (452, 206), (499, 190), (545, 176), (550, 150), (552, 128), (551, 106), (552, 88), (560, 89), (572, 100), (584, 114)],
-        # las mangas largas caen pegadas al cuerpo: estas líneas las separan
-        cuts=dict(
-            front=[
-                [(213, 455), (217, 470), (221, 490), (224, 520), (225, 540), (220, 558)],
-                [(695, 450), (692, 465), (688, 485), (683, 515), (682, 545), (684, 600), (687, 680), (689, 760), (697, 860), (700, 940), (702, 1000), (704, 1040), (705, 1064)],
-            ],
-            back=[
-                [(179, 440), (180, 515), (178, 600), (175, 680), (176, 720), (176, 780), (174, 830)],
-                [(702, 438), (700, 465), (701, 500), (698, 545), (699, 580), (702, 620), (705, 665)],
-            ],
-        ),
-        # axilas (arranque de esas líneas): en manga larga la costura lateral tiene dos tramos
-        arm=dict(back=[(179, 440), (702, 438)], front=[(213, 455), (695, 450)]),
-        crop=dict(x=40, y=30, w=820, h=1061),
-        delight=44,  # el zigzag es dibujo, no sombra: solo se aplana lo muy suave
-        crest=dict(detail="portero-naranja/04.jpg", detail_roi=(170, 230, 700, 770), roi=(527, 238, 630, 336)),
-        ink="#f7f5ee",  # la tienda serigrafía esta camiseta en blanco con borde negro
-        edge="#0c0c10",
-        lining="#242424",
-    ),
-}
+def load_kits(club):
+    """Equipaciones del club: clubs/<club>/kits.py define KITS (fotos, puntos clave, retoques)."""
+    spec = importlib.util.spec_from_file_location(f"kits_{club}", CLUBS / club / "kits.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.KITS
+
+
 
 
 def arc(contour, i, j):
@@ -144,7 +98,11 @@ def snap(contour, pts):
 
 def delight(img, mask, sigma):
     """Quita el sombreado de estudio de la foto (pliegues y volumen del maniquí) y deja el color
-    liso del tejido: la luz y las sombras las pone después el motor 3D sobre la malla real."""
+    liso del tejido: la luz y las sombras las pone después el motor 3D sobre la malla real.
+    Con sigma 0 no se toca: fotos de luz plana, o tejidos sin color (blanco, negro) en los que
+    la luminancia no distingue sombra de tela."""
+    if not sigma:
+        return img
     f = img.astype(np.float32)
     lum = f @ np.array([0.114, 0.587, 0.299], np.float32)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -198,8 +156,8 @@ def build(kit, cfg):
     back_img = cv2.imread(str(SRC / cfg["back"]))
     front_img = cv2.imread(str(SRC / cfg["front"]))
     H, W = back_img.shape[:2]
-    back_mask, back_c = shirt_mask(back_img, cfg["cuts"]["back"])
-    front_mask, front_c = shirt_mask(front_img, cfg["cuts"]["front"])
+    back_mask, back_c = shirt_mask(back_img, cfg["cuts"]["back"], cfg.get("close", 9))
+    front_mask, front_c = shirt_mask(front_img, cfg["cuts"]["front"], cfg.get("close", 9))
     crop = cfg["crop"]
 
     keys, b_pts, f_pts = list(KEYS), list(cfg["back_pts"]), list(cfg["front_pts"])
@@ -372,7 +330,8 @@ def build(kit, cfg):
         rw, pad = top_cfg["width"] * px_per_m, 60
         for name, key in (("A", "neckA>cuffTopA"), ("B", "cuffTopB>neckB")):
             pts, d = sleeve_seam(key)
-            rect = dict(x=pad if name == "A" else W - pad - rw, y=525.0, w=rw, h=float(d[-1]))
+            where = top_cfg.get("rects", {}).get(name)
+            rect = dict(x=where[0], y=where[1], w=rw, h=float(d[-1])) if where else dict(x=pad if name == "A" else W - pad - rw, y=525.0, w=rw, h=float(d[-1]))
             top_rects[name] = rect
             # misma ley de ancho que la separación de los paneles en la simulación
             taper = np.clip((d[-1] - d) / (0.07 * px_per_m), 0, 1)
@@ -426,7 +385,8 @@ def build(kit, cfg):
         inside = cv2.erode(mask, np.ones((13, 13), np.uint8)) > 0
         # las rendijas de fondo que la silueta engloba (entre la manga y el cuerpo, en la axila)
         # tampoco son tela: sin esto la axila salía con una cuña blanca
-        n, labels = cv2.connectedComponents((img.min(axis=2) >= 236).astype(np.uint8))
+        bg = float(np.median(np.r_[img[0].min(axis=1), img[-1].min(axis=1), img[:, 0].min(axis=1), img[:, -1].min(axis=1)]))
+        n, labels = cv2.connectedComponents((img.min(axis=2) >= max(236, bg - 6)).astype(np.uint8))
         border = np.unique(np.r_[labels[0], labels[-1], labels[:, 0], labels[:, -1]])
         inside &= cv2.dilate(np.isin(labels, border[border > 0]).astype(np.uint8), np.ones((7, 7), np.uint8)) == 0
         if exclude is not None:
@@ -445,36 +405,81 @@ def build(kit, cfg):
         rgba = np.dstack([img, a])[crop["y"] : crop["y"] + crop["h"], crop["x"] : crop["x"] + crop["w"]]
         return cv2.resize(rgba, (round(600 * crop["w"] / crop["h"]), 600), interpolation=cv2.INTER_AREA)
 
-    def patch_remains(img, unwarp):
-        """El parche de la manga asoma de canto en el borde de las fotos de frente y de espalda. Con
-        la franja ya va entero: esos restos se tapan con la tela de al lado."""
+    mask_of = lambda img: front_mask if img is front_img else back_mask  # noqa: E731
+
+    def sleeve_logos():
+        """(manga, distancia al puño en m, tamaño en m) de cada logo de la cara exterior de las mangas."""
+        if "synth" in top_cfg:
+            return [(side, lg["at"], lg["size"]) for side, lg in top_cfg["synth"]["logos"].items()]
         pc = top_cfg["patch"]
-        pts, d = sleeve_seam("cuffTopB>neckB")
-        keep = np.abs(d - pc["at"] * px_per_m) < (pc["size"] / 2 + 0.02) * px_per_m
-        zone = np.zeros(img.shape[:2], np.uint8)
-        cv2.polylines(zone, [unwarp(pts[keep]).astype(np.int32).reshape(-1, 1, 2)], False, 255, 52)
-        b, g, r = (img[..., i].astype(int) for i in range(3))
-        odd = (zone > 0) & ((r > b + 12) | (np.minimum(np.minimum(b, g), r) > 135))
+        return [("B", pc["at"], pc["size"])]
+
+    def patch_remains(img, unwarp):
+        """Los logos de la cara exterior de la manga asoman de canto en el borde de las fotos de frente
+        y de espalda. Con la franja ya van enteros: esos restos se tapan con la tela de al lado."""
+        odd = np.zeros(img.shape[:2], bool)
+        for side, at, size in sleeve_logos():
+            pts, d = sleeve_seam("neckA>cuffTopA" if side == "A" else "cuffTopB>neckB")
+            keep = np.abs(d - at * px_per_m) < (size / 2 + 0.02) * px_per_m
+            zone = np.zeros(img.shape[:2], np.uint8)
+            cv2.polylines(zone, [unwarp(pts[keep]).astype(np.int32).reshape(-1, 1, 2)], False, 255, 90)
+            inside = (zone > 0) & (mask_of(img) > 0)
+            # lo que no es tela: lejos del color dominante de la zona
+            fabric = np.median(img[inside].reshape(-1, 3), axis=0)
+            odd |= inside & (np.abs(img.astype(int) - fabric).sum(axis=2) > 70)
         return cv2.dilate(odd.astype(np.uint8), np.ones((7, 7), np.uint8)) > 0
+
+    def synth_strip(tex, name, target, tw, th, t):
+        """Franja compuesta: la tela de la manga, las tres rayas que bajan del hombro y el logo."""
+        sy = top_cfg["synth"]
+        strip = np.empty((th, tw, 3), np.float32)
+        strip[:] = target
+        rng = np.random.default_rng(7)
+        strip += cv2.GaussianBlur(rng.normal(0, 3.0, (th, tw)).astype(np.float32), (0, 0), 1.2)[..., None]
+        logo_cfg = sy["logos"][name]
+        st = sy["stripes"]
+        # las rayas arrancan encima del logo de esa manga
+        start = max(st["start"], logo_cfg["at"] + logo_cfg["size"] / 2 + 0.012)
+        sw, gap = st["width"] * px_per_m * TEX, st["gap"] * px_per_m * TEX
+        total = 3 * sw + 2 * gap
+        rows = t > start * px_per_m
+        for k in range(3):
+            x0 = tw / 2 - total / 2 + k * (sw + gap)
+            cols = np.arange(tw)
+            cover = np.clip(np.minimum(cols + 1 - x0, x0 + sw - cols), 0, 1)  # borde suave de 1 px
+            strip[rows] = strip[rows] * (1 - cover[None, :, None]) + np.array(st["color"], np.float32) * cover[None, :, None]
+        logo = cv2.imread(str(SRC / logo_cfg["photo"]), cv2.IMREAD_UNCHANGED)
+        h = round(logo_cfg["size"] * px_per_m * TEX)
+        w = round(h * logo.shape[1] / logo.shape[0])
+        logo = cv2.resize(logo, (w, h), interpolation=cv2.INTER_AREA).astype(np.float32)
+        if name == "B":  # en esa manga el delantero (columna 0) queda a la derecha de quien la mira
+            logo = logo[:, ::-1]
+        y0, x0 = round((t[0] - logo_cfg["at"] * px_per_m) * TEX - h / 2), round(tw / 2 - w / 2)
+        a = logo[..., 3:] / 255
+        area = strip[y0 : y0 + h, x0 : x0 + w]
+        area[:] = area * (1 - a) + logo[..., :3] * a
+        return np.clip(strip, 0, 255)
 
     def paste_tops(tex):
         """Pinta las dos franjas en su hueco de la textura delantera."""
-        side = cv2.imread(str(SRC / top_cfg["side"]))
         pts, d = sleeve_seam("neckA>cuffTopA")
         tw, th = round(top_rects["A"]["w"] * TEX), round(d[-1] * TEX)
         # fila 0 = donde acaba la franja (hombro); última fila = puño. Columna 0 = lado del delantero
         t = d[-1] - (np.arange(th) + 0.5) / TEX
+        # tono de referencia: la tela de la propia manga junto a la costura, sin contar los logos
+        inward = np.sign(W / 2 - pts[:, 0].mean())
+        near = np.vstack([pts[:-1] + [inward * k, 4] for k in (14, 20, 26, 32)])
+        at = ((unwarp_f(near) - (crop["x"], crop["y"])) * TEX).astype(int)
+        seen = np.array([tex[y, x] for x, y in at if 0 <= y < tex.shape[0] and 0 <= x < tex.shape[1]]).astype(np.float32)
+        target = np.median(seen[np.abs(seen - np.median(seen, axis=0)).sum(axis=1) < 60], axis=0)
+        if "synth" in top_cfg:
+            return place_tops(tex, {name: synth_strip(tex, name, target, tw, th, t) for name in ("A", "B")})
+        side = cv2.imread(str(SRC / top_cfg["side"]))
         u = ((np.arange(tw) + 0.5) / tw - 0.5) * 2 * top_cfg["band"]
         mx = (top_cfg["centre"] + u)[None, :].repeat(th, 0).astype(np.float32)
         my = (top_cfg["cuff"] - t)[:, None].repeat(tw, 1).astype(np.float32)
         strip = cv2.remap(side, mx, my, cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE).astype(np.float32)
         # se iguala a la tela de la manga en la textura (ya sin el sombreado de estudio)
-        # tono de referencia: la tela de la propia manga junto a la costura, sin contar los logos
-        inward = np.sign(W / 2 - pts[:, 0].mean())
-        near = np.vstack([pts[:-1] + [inward * k, 4] for k in (14, 20, 26, 32)])
-        at = ((unwarp_f(near) - (crop["x"], crop["y"])) * TEX).astype(int)
-        seen = np.array([tex[y, x] for x, y in at if 0 <= y < tex.shape[0] and 0 <= x < tex.shape[1]])
-        target = np.median(seen[seen.max(axis=1) < 150], axis=0)
         gray = cv2.GaussianBlur(strip.mean(axis=2), (0, 0), 18 * TEX)
         strip *= (np.median(gray) / gray)[..., None]
         strip = np.clip(strip * (target / np.median(strip.reshape(-1, 3), axis=0)), 0, 255)
@@ -494,8 +499,11 @@ def build(kit, cfg):
         area = with_patch[y0 : y0 + size, x0 : x0 + size]
         area[:] = area * (1 - alpha) + patch * alpha
 
+        return place_tops(tex, {"A": strip, "B": with_patch})
+
+    def place_tops(tex, strips):
         m = 8  # margen repetido alrededor: que el filtrado de la textura no traiga colores de fuera
-        for name, img in (("A", strip), ("B", with_patch)):
+        for name, img in strips.items():
             r = top_rects[name]
             assert not cv2.dilate(front_mask, np.ones((25, 25), np.uint8))[int(r["y"]) : int(r["y"] + r["h"]), int(r["x"]) : int(r["x"] + r["w"])].any(), "la franja pisa la camiseta"
             x, y = round((r["x"] - crop["x"]) * TEX), round((r["y"] - crop["y"]) * TEX)
@@ -503,8 +511,8 @@ def build(kit, cfg):
             tex[y - m : y - m + block.shape[0], x - m : x - m + block.shape[1]] = block
         return tex
 
-    kit_dir = ROOT / "public" / "kit"
-    og_dir = ROOT / "src" / "assets" / "og"
+    kit_dir = CLUBS / CLUB / "public" / "kit"
+    og_dir = CLUBS / CLUB / "og"
     kit_dir.mkdir(parents=True, exist_ok=True)
     og_dir.mkdir(parents=True, exist_ok=True)
     for name, img, mask in (("front", front_img, front_mask), ("back", back_img, back_mask)):
@@ -532,15 +540,20 @@ def build(kit, cfg):
     return dict(
         crop=crop,
         lining=cfg["lining"],
-        text=dict(cx=cfg.get("text_cx", round(float(b_land[0, 0] + b_land[7, 0]) / 2, 1)), top=int(top), ppm=round(float(px_per_m), 1), ink=cfg["ink"], edge=cfg["edge"]),
+        text=dict(
+            cx=cfg.get("text_cx", round(float(b_land[0, 0] + b_land[7, 0]) / 2, 1)), top=int(top), ppm=round(float(px_per_m), 1), ink=cfg["ink"], edge=cfg["edge"],
+            **({"lettering": cfg["lettering"]} if "lettering" in cfg else {}),
+        ),
     )
 
 
 if __name__ == "__main__":
-    BUILD.mkdir(exist_ok=True)
-    info_path = ROOT / "src" / "data" / "kit.json"
+    BUILD.mkdir(parents=True, exist_ok=True)
+    KITS = load_kits(CLUB)
+    info_path = CLUBS / CLUB / "kit.json"
     info = json.loads(info_path.read_text()) if info_path.exists() else {}
     info = {k: v for k, v in info.items() if k in KITS}
-    for kit in sys.argv[1:] or KITS:
+    wanted = [a for a in sys.argv[1:] if a in KITS]
+    for kit in wanted or KITS:
         info[kit] = build(kit, KITS[kit])
     info_path.write_text(json.dumps(info, indent=2) + "\n")

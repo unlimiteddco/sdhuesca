@@ -1,0 +1,211 @@
+{
+  "id": "madrid",
+  "site": "https://realmadrid.bellostas.studio",
+  "season": "2026/27",
+  "name": "Real Madrid",
+  "of": "del Real Madrid",
+  "siteName": "El vestuario del Real Madrid en 3D",
+  "description": "Recorre la percha del vestuario blanco: las camisetas del Real Madrid {season} en 3D, una por jugador. Tributo no oficial.",
+  "competition": "LaLiga EA Sports",
+  "stadium": "Santiago Bernabéu",
+  "crest": {
+    "src": "/escudo/real-madrid.webp",
+    "width": 1000,
+    "height": 1344,
+    "alt": "Escudo del Real Madrid"
+  },
+  "wordmark": {
+    "src": "/escudo/real-madrid.svg",
+    "width": 7714,
+    "height": 688
+  },
+  "ticker": [
+    "Tributo no oficial",
+    "No afiliado al Real Madrid CF ni a LaLiga",
+    "¡Hala Madrid!",
+    "Plantilla {season}",
+    "Santiago Bernabéu · Madrid",
+    "Hecho con cariño en Aragón"
+  ],
+  "lettering": {
+    "font": "Saira Dorsal",
+    "fonts": [
+      {
+        "family": "Saira Dorsal",
+        "file": "og/SairaDorsal.ttf",
+        "advances": "og/saira-dorsal.json",
+        "web": "fonts/saira-dorsal.woff2",
+        "source": {
+          "file": "node_modules/@fontsource-variable/saira/files/saira-latin-wdth-normal.woff2",
+          "axes": {
+            "wdth": 70,
+            "wght": 550
+          }
+        }
+      },
+      {
+        "family": "Saira Portero",
+        "file": "og/SairaPortero.ttf",
+        "advances": "og/saira-portero.json",
+        "web": "fonts/saira-portero.woff2",
+        "source": {
+          "file": "node_modules/@fontsource-variable/saira/files/saira-latin-wdth-normal.woff2",
+          "axes": {
+            "wdth": 75,
+            "wght": 600
+          }
+        }
+      }
+    ],
+    "numbers": "png",
+    "layout": "straight",
+    "refPpm": 1771.6,
+    "nameSize": 116,
+    "nameStroke": 0,
+    "nameCentre": 223,
+    "numberHeight": 420,
+    "numberCentre": 568,
+    "digitGap": 33,
+    "cap": 0.688,
+    "digitUnits": 760,
+    "maxName": 15,
+    "maxNumber": 2,
+    "allowed": "A-ZÀÁÂÃÄĆČÈÉÊËÌÍÎÏÒÓÔÕÖØÙÚÛÜÝÑŠ "
+  },
+  "store": {
+    "domain": "shop.realmadrid.com",
+    "product": "https://shop.realmadrid.com/products/rmcfmz0941-mens-home-shirt-26-27-white",
+    "cart": "https://shop.realmadrid.com/cart/add",
+    "properties": {
+      "_Name": "{name}",
+      "_Number": "{number}",
+      "Nombre": "{name}",
+      "Número": "{number}",
+      "_badge": "La Liga"
+    },
+    "sizes": [
+      {
+        "label": "S",
+        "variant": "61920281755978"
+      },
+      {
+        "label": "M",
+        "variant": "61920282050890"
+      },
+      {
+        "label": "L",
+        "variant": "61920282345802"
+      },
+      {
+        "label": "XL",
+        "variant": "61920282640714"
+      },
+      {
+        "label": "2XL",
+        "variant": "61920282935626"
+      }
+    ],
+    "defaultSize": "M"
+  },
+  "stats": {
+    "source": "Transfermarkt",
+    "club": {
+      "slug": "real-madrid",
+      "id": 418
+    },
+    "comp": {
+      "slug": "laliga",
+      "id": "ES1",
+      "season": 2026,
+      "name": "LaLiga"
+    }
+  },
+  "room": {
+    "background": "#06070b",
+    "slats": {
+      "dark": [
+        24,
+        27,
+        38
+      ],
+      "mid": [
+        36,
+        41,
+        56
+      ],
+      "grain": [
+        "8,10,16",
+        "70,78,100"
+      ],
+      "groove": "#040509",
+      "tint": "#9097a8"
+    },
+    "glow": [
+      [
+        255,
+        238,
+        205
+      ],
+      [
+        255,
+        226,
+        180
+      ],
+      [
+        255,
+        214,
+        150
+      ]
+    ],
+    "led": [
+      1.5,
+      1.1,
+      0.45
+    ],
+    "trim": "#0c0e15",
+    "bench": "#141824",
+    "seat": "#e8e5de",
+    "metal": "#d6b469",
+    "floor": "#090a0f",
+    "hemisphere": [
+      "#eef2ff",
+      "#0a0c14"
+    ],
+    "key": "#fff7ec",
+    "fill": "#c9d6ff",
+    "warm": "#ffd8a0",
+    "dim": "#04050a",
+    "rail": "#d9c389",
+    "hanger": "#c9a46e",
+    "towels": [
+      "#f3f1ec",
+      "#3d195b",
+      "#00529f"
+    ],
+    "tag": {
+      "face": [
+        "#f3dc95",
+        "#a8823a"
+      ],
+      "ink": "#241a08",
+      "edge": "#c9a24f",
+      "captain": [
+        "#ffffff",
+        "#d9d9d9"
+      ],
+      "captainInk": "#3d195b"
+    }
+  },
+  "og": {
+    "glow": [
+      "#2b3150",
+      "#10131d",
+      "#06070b"
+    ],
+    "band": "#3d195b",
+    "text": "#f5f2ea",
+    "gold": "#febe10",
+    "footer": "Vestuario 3D · Santiago Bernabéu · Tributo no oficial",
+    "wordmarkWidth": 300
+  }
+}

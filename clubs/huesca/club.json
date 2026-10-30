@@ -1,0 +1,195 @@
+{
+  "id": "huesca",
+  "site": "https://sdhuesca.bellostas.studio",
+  "season": "2026/27",
+  "name": "SD Huesca",
+  "of": "de la SD Huesca",
+  "siteName": "El vestuario del Huesca en 3D",
+  "description": "Recorre la percha del vestuario azulgrana: las camisetas de la SD Huesca {season} en 3D, una por jugador. Tributo no oficial.",
+  "competition": "Primera Federación",
+  "stadium": "El Alcoraz",
+  "crest": {
+    "src": "/escudo/sd-huesca.webp",
+    "width": 1200,
+    "height": 1390,
+    "alt": "Escudo de la SD Huesca"
+  },
+  "wordmark": {
+    "src": "/escudo/sdhuesca.svg",
+    "width": 750,
+    "height": 100
+  },
+  "ticker": [
+    "Tributo no oficial",
+    "No afiliado a la SD Huesca ni a la RFEF",
+    "Fieles siempre, sin reblar",
+    "Plantilla {season}",
+    "El Alcoraz · Huesca",
+    "Hecho con cariño en Aragón"
+  ],
+  "lettering": {
+    "font": "Archivo Dorsal",
+    "numbers": "svg",
+    "layout": "arc",
+    "refPpm": 1281.3,
+    "nameSize": 92,
+    "nameStroke": 4.4,
+    "radius": 180,
+    "arcCentre": 361.5,
+    "numberHeight": 225,
+    "numberCentre": 463,
+    "digitGap": 3,
+    "cap": 0.686,
+    "digitUnits": 708,
+    "maxName": 10,
+    "maxNumber": 2,
+    "fonts": [
+      {
+        "family": "Archivo Dorsal",
+        "file": "og/ArchivoDorsal.ttf",
+        "advances": "og/dorsal-advances.json",
+        "web": "fonts/archivo-dorsal.woff2",
+        "source": {
+          "file": "node_modules/@fontsource-variable/archivo/files/archivo-latin-wdth-normal.woff2",
+          "axes": {
+            "wdth": 62,
+            "wght": 765
+          }
+        }
+      }
+    ],
+    "allowed": "A-ZÁÉÍÓÚÜÑÇ0-9 .'\\-"
+  },
+  "store": {
+    "domain": "tienda.sdhuesca.es",
+    "product": "https://tienda.sdhuesca.es/products/camiseta-primera-equipacion-2026-2027",
+    "cart": "https://tienda.sdhuesca.es/cart/add",
+    "properties": {
+      "Serigrafia": "{number} | {name}"
+    },
+    "sizes": [
+      {
+        "label": "S",
+        "variant": "57191686701436"
+      },
+      {
+        "label": "M",
+        "variant": "57191686799740"
+      },
+      {
+        "label": "L",
+        "variant": "57191686898044"
+      },
+      {
+        "label": "XL",
+        "variant": "57191686996348"
+      },
+      {
+        "label": "2XL",
+        "variant": "57191687094652"
+      }
+    ],
+    "defaultSize": "M"
+  },
+  "stats": {
+    "source": "Transfermarkt",
+    "club": {
+      "slug": "sd-huesca",
+      "id": 5358
+    },
+    "comp": {
+      "slug": "primera-federacion-grupo-ii",
+      "id": "E3G2",
+      "season": 2026,
+      "name": "Primera Federación · Grupo 2"
+    }
+  },
+  "room": {
+    "background": "#070504",
+    "slats": {
+      "dark": [
+        52,
+        31,
+        19
+      ],
+      "mid": [
+        70,
+        42,
+        25
+      ],
+      "grain": [
+        "20,10,5",
+        "120,78,48"
+      ],
+      "groove": "#080503",
+      "tint": "#6e625a"
+    },
+    "glow": [
+      [
+        255,
+        196,
+        128
+      ],
+      [
+        255,
+        170,
+        100
+      ],
+      [
+        255,
+        150,
+        80
+      ]
+    ],
+    "led": [
+      1.5,
+      0.95,
+      0.5
+    ],
+    "trim": "#1b110a",
+    "bench": "#2c1b10",
+    "seat": "#4f0b18",
+    "metal": "#c79a5b",
+    "floor": "#0d0907",
+    "hemisphere": [
+      "#ffe9d4",
+      "#1a0f08"
+    ],
+    "key": "#fff3e4",
+    "fill": "#bfd2ff",
+    "warm": "#ffb070",
+    "dim": "#060403",
+    "rail": "#d8d2c8",
+    "hanger": "#9a6a3a",
+    "towels": [
+      "#e9e4da",
+      "#1a47a8",
+      "#8f1228"
+    ],
+    "tag": {
+      "face": [
+        "#e8c98a",
+        "#8f6a30"
+      ],
+      "ink": "#2b1c0a",
+      "edge": "#b98b45",
+      "captain": [
+        "#ffe36b",
+        "#d9a312"
+      ],
+      "captainInk": "#0b1a3f"
+    }
+  },
+  "og": {
+    "glow": [
+      "#5a3a22",
+      "#1b110a",
+      "#070504"
+    ],
+    "band": "#a5152f",
+    "text": "#f3eadb",
+    "gold": "#e2b65e",
+    "footer": "Vestuario 3D · El Alcoraz · Tributo no oficial",
+    "wordmarkWidth": 232
+  }
+}

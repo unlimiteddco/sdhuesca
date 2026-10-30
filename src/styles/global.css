@@ -1,24 +1,18 @@
 @import "tailwindcss";
 
-/* letra de los nombres serigrafiados: Archivo (OFL) condensada y ajustada a la oficial */
-@font-face {
-  font-family: "Archivo Dorsal";
-  src: url("../assets/fonts/archivo-dorsal.woff2") format("woff2");
-  font-display: block;
-}
-
 @theme {
   --font-display: "Anton", "Arial Narrow", sans-serif;
   --font-sans: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  --color-noche: #070504;
-  --color-nogal: #1b110a;
-  --color-hueso: #f3eadb;
-  --color-azul: #1a47a8;
-  --color-grana: #a5152f;
-  --color-grana-viva: #e02b4b;
-  --color-oro: #e2b65e;
+  /* valores por defecto; cada club los fija en clubs/<club>/theme.css */
+  --color-fondo: #070504;
+  --color-madera: #1b110a;
+  --color-claro: #f3eadb;
+  --color-primario: #1a47a8;
+  --color-acento: #a5152f;
+  --color-acento-vivo: #e02b4b;
+  --color-dorado: #e2b65e;
 
   --animate-ticker: ticker 48s linear infinite;
 
@@ -32,7 +26,7 @@
 html,
 body {
   height: 100%;
-  background: var(--color-noche);
+  background: var(--color-fondo);
   overscroll-behavior: none;
 }
 

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import type { Player, Pos } from '../../data/squad';
+import { CLUB } from '../../club';
+import type { Player, Pos } from '../../data/players';
 import { addBenchProps, createTag } from './props';
 import { buildRoom, RAIL_Y } from './room';
 import { createClothMaterial, type ClothUniforms } from './cloth';
@@ -121,7 +122,7 @@ export class LockerRoom {
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
 
-    this.scene.background = new THREE.Color(0x070504);
+    this.scene.background = new THREE.Color(CLUB.room.background);
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     this.scene.environmentIntensity = 0.18;
@@ -133,8 +134,8 @@ export class LockerRoom {
     this.scene.add(this.rail);
 
     const fabric = createFabricNormal();
-    const metal = new THREE.MeshStandardMaterial({ color: 0xd8d2c8, roughness: 0.25, metalness: 1 });
-    const wood = new THREE.MeshPhysicalMaterial({ color: 0x9a6a3a, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.35 });
+    const metal = new THREE.MeshStandardMaterial({ color: CLUB.room.rail, roughness: 0.25, metalness: 1 });
+    const wood = new THREE.MeshPhysicalMaterial({ color: CLUB.room.hanger, roughness: 0.42, clearcoat: 0.5, clearcoatRoughness: 0.35 });
 
     const add = (player: Player, i: number, onRail = true) => {
       const lowRes = createKitTexture(player, assets, LOW, this.anisotropy);

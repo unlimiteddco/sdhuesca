@@ -1,0 +1,22 @@
+/* Colores y letras de serigrafía del club. Los nombres de color los usa toda la interfaz. */
+:root {
+  --color-fondo: #06070b;
+  --color-madera: #10131c;
+  --color-claro: #f5f2ea;
+  --color-primario: #00529f;
+  --color-acento: #3d195b;
+  --color-acento-vivo: #febe10;
+  --color-dorado: #e3bd63;
+}
+
+/* letras de los nombres serigrafiados: Saira (OFL) ajustada a las oficiales de campo y de portero */
+@font-face {
+  font-family: "Saira Dorsal";
+  src: url("./fonts/saira-dorsal.woff2") format("woff2");
+  font-display: block;
+}
+@font-face {
+  font-family: "Saira Portero";
+  src: url("./fonts/saira-portero.woff2") format("woff2");
+  font-display: block;
+}

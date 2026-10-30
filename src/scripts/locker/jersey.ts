@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import type { Player } from '../../data/squad';
-import kitInfo from '../../data/kit.json';
-import { LETTERING, digitBoxes, digitPaths, nameAngles, type DigitArt } from './lettering';
+import kitInfo from '@club/kit.json';
+import type { Player } from '../../data/players';
+import { artFor, digitBoxes, digitPaths, letteringFor, namePlacement, type DigitArt } from './lettering';
 
 /** Escala de los modelos de Blender dentro del vestuario */
 export const SHIRT_SCALE = 1.1;
@@ -20,13 +20,13 @@ export interface Kit {
   back: HTMLImageElement;
   /** Cifras del dorsal (0–9) ya pintadas con la tinta y el borde de esta equipación */
   digits: HTMLImageElement[];
+  /** Dibujos de esas cifras (medidas) */
+  art: DigitArt;
   info: (typeof kitInfo)[KitName];
 }
 
 export interface KitAssets {
   kits: Record<KitName, Kit>;
-  /** Dibujos de las cifras, para volver a pintarlas (tarjetas, pruebas) */
-  art: DigitArt;
   /** Balón de Poly Haven (CC0) */
   balls: THREE.Object3D[];
   /** Botas generadas con Magnific (texto a 3D): una por modelo, pie derecho */
@@ -48,9 +48,10 @@ function image(src: string) {
   });
 }
 
-/** Una cifra como imagen: el SVG se monta con los colores del kit y se carga desde memoria */
+/** Una cifra como imagen: el PNG de la tienda tal cual, o el SVG montado con los colores del kit */
 function digitImage(art: DigitArt, digit: string, ink: string, edge: string) {
-  const { w, h } = art.digits[digit];
+  const { w, h, src: file } = art.digits[digit];
+  if (art.kind === 'png') return image(file!);
   // al doble de su tamaño: en la textura grande se dibuja a unos 600 px de alto
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w * 2}" height="${h * 2}" viewBox="0 0 ${w} ${h}">${digitPaths(art, digit, ink, edge)}</svg>`;
   const src = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
@@ -62,8 +63,9 @@ function digitImage(art: DigitArt, digit: string, ink: string, edge: string) {
   });
 }
 
-async function loadKit(name: KitName, art: DigitArt): Promise<Kit> {
+async function loadKit(name: KitName, all: DigitArt): Promise<Kit> {
   const { ink, edge } = kitInfo[name].text;
+  const art = artFor(all, name);
   const [gltf, front, back, ...digits] = await Promise.all([
     new GLTFLoader().loadAsync(url(`/models/camiseta-${name}.glb`)),
     image(`/kit/${name}-front.webp`),
@@ -79,7 +81,7 @@ async function loadKit(name: KitName, art: DigitArt): Promise<Kit> {
     if (!mesh) throw new Error(`Falta "${part}" en camiseta-${name}.glb`);
     return mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
   };
-  return { shirt: geometry('camiseta'), hanger: geometry('percha'), hook: geometry('gancho'), front, back, digits, info: kitInfo[name] };
+  return { shirt: geometry('camiseta'), hanger: geometry('percha'), hook: geometry('gancho'), front, back, digits, art, info: kitInfo[name] };
 }
 
 export async function loadKitAssets(): Promise<KitAssets> {
@@ -104,11 +106,9 @@ export async function loadKitAssets(): Promise<KitAssets> {
     size.width = Math.max(size.width, (box.max.x - box.min.x) * SHIRT_SCALE);
     size.bottom = Math.min(size.bottom, box.min.y * SHIRT_SCALE);
   }
-  return { kits: { campo, portero }, art, balls, boots, size };
+  return { kits: { campo, portero }, balls, boots, size };
 }
 
-// Archivo condensada, ajustada en ancho y grosor a la letra oficial de los nombres (tools/kit/lettering.py)
-const FONT = '"Archivo Dorsal"';
 
 /**
  * Atlas de la camiseta de un jugador: las fotos oficiales (pecho | espalda) con su nombre y
@@ -126,8 +126,9 @@ export function createKitTexture(player: Player, assets: KitAssets, k: number, a
   ctx.drawImage(kit.back, w, 0, w, h);
 
   // a partir de aquí se dibuja en píxeles de la foto de espalda; `s` adapta las medidas a la escala de cada foto
-  const s = text.ppm / 1281.3;
-  const L = LETTERING;
+  // medidas de la serigrafía de esta equipación; la letra es libre, ajustada a la oficial (tools/kit/lettering.py)
+  const L = letteringFor(text);
+  const s = text.ppm / L.refPpm;
   ctx.setTransform(k, 0, 0, k, w - crop.x * k, -crop.y * k);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
@@ -135,25 +136,23 @@ export function createKitTexture(player: Player, assets: KitAssets, k: number, a
   ctx.fillStyle = text.ink;
   ctx.strokeStyle = text.edge;
 
-  // nombre: cada letra gira alrededor del centro del arco
+  // nombre: letra a letra, en arco o en línea según el club
   const size = L.nameSize * s;
-  ctx.font = `${size}px ${FONT}`;
-  ctx.lineWidth = 4.4 * s;
+  ctx.font = `${size}px "${L.font}"`;
+  ctx.lineWidth = L.nameStroke * s;
   const letters = [...player.shirt];
-  const angles = nameAngles(letters.map((ch) => ctx.measureText(ch).width));
-  letters.forEach((ch, i) => {
+  namePlacement(letters.map((ch) => ctx.measureText(ch).width), text.cx, text.top, s, L).forEach(({ x, y, a }, i) => {
     ctx.save();
-    ctx.translate(text.cx, text.top + L.arcCentre * s);
-    ctx.rotate(angles[i]);
-    ctx.translate(0, -L.radius * s + (L.cap / 2) * size);
-    ctx.strokeText(ch, 0, 0);
-    ctx.fillText(ch, 0, 0);
+    ctx.translate(x, y);
+    ctx.rotate(a);
+    if (L.nameStroke) ctx.strokeText(letters[i], 0, (L.cap / 2) * size);
+    ctx.fillText(letters[i], 0, (L.cap / 2) * size);
     ctx.restore();
   });
 
   // dorsal: los dibujos oficiales de cada cifra, con su borde y el escudo a una tinta en la base
   const digits = [...(player.estampado ?? String(player.dorsal))];
-  digitBoxes(assets.art, digits, text.cx, text.top + L.numberCentre * s, L.numberHeight * s, L.digitGap * s).forEach((box, i) => {
+  digitBoxes(kit.art, digits, text.cx, text.top + L.numberCentre * s, L.numberHeight * s, L.digitGap * s, L.digitUnits).forEach((box, i) => {
     ctx.drawImage(kit.digits[+digits[i]], box.x, box.y, box.w, box.h);
   });
 

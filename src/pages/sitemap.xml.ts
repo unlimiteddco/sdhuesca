@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { SQUAD } from '../data/squad';
+import { SQUAD } from '../club';
 
 export const GET: APIRoute = ({ site }) => {
   const paths = ['/', '/personaliza/', ...SQUAD.map((p) => `/dorsal/${p.dorsal}/`)];

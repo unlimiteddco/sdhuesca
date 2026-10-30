@@ -1,14 +1,14 @@
-// Descarga las estadísticas de liga de la plantilla desde Transfermarkt y regenera src/data/stats.ts.
+// Descarga las estadísticas de liga de la plantilla desde Transfermarkt y regenera clubs/<club>/stats.ts.
 //
-// Uso: npm run stats   (tras cada jornada; después, npm run build)
+// Uso: npm run stats   (CLUB=madrid npm run stats para otro club; tras cada jornada, y después compilar)
 //
 // Lee dos páginas públicas: el rendimiento de la plantilla en la competición y la clasificación
 // (de ella salen los partidos jugados y los goles encajados por el equipo).
 import { readFile, writeFile } from 'node:fs/promises';
 
-const CLUB = { slug: 'sd-huesca', id: 5358 };
-// Primera Federación, Grupo 2, temporada 2026/27. Cambiar al empezar otra temporada o al subir de categoría.
-const COMP = { slug: 'primera-federacion-grupo-ii', id: 'E3G2', season: 2026, name: 'Primera Federación · Grupo 2' };
+const DIR = new URL(`../clubs/${process.env.CLUB || 'huesca'}/`, import.meta.url);
+// club y competición en Transfermarkt: clubs/<club>/club.json → stats. Cambiar al empezar otra temporada.
+const { club: CLUB, comp: COMP } = JSON.parse(await readFile(new URL('club.json', DIR), 'utf8')).stats;
 const BASE = 'https://www.transfermarkt.es';
 const SQUAD_URL = `${BASE}/${CLUB.slug}/leistungsdaten/verein/${CLUB.id}/reldata/${COMP.id}%26${COMP.season}/plus/1`;
 const TABLE_URL = `${BASE}/${COMP.slug}/tabelle/wettbewerb/${COMP.id}/saison_id/${COMP.season}`;
@@ -70,7 +70,7 @@ function team(html) {
   throw new Error('El equipo no aparece en la clasificación');
 }
 
-const squadSrc = await readFile(new URL('../src/data/squad.ts', import.meta.url), 'utf8');
+const squadSrc = await readFile(new URL('squad.ts', DIR), 'utf8');
 const squad = [...squadSrc.matchAll(/\{ dorsal: (\d+),[^}]*?pos: '(\w+)'/g)].map(([, dorsal, pos]) => ({ dorsal: Number(dorsal), pos }));
 
 const [rows, club] = await Promise.all([page(SQUAD_URL).then(squadRows), page(TABLE_URL).then(team)]);
@@ -114,5 +114,5 @@ export const STATS: Record<number, Stats> = {
 ${lines.join('\n')}
 };
 `;
-await writeFile(new URL('../src/data/stats.ts', import.meta.url), out);
+await writeFile(new URL('stats.ts', DIR), out);
 console.log(`Jornada ${club.pj} · ${squad.length - missing.length}/${squad.length} jugadores${missing.length ? ` (sin fila: ${missing.join(', ')})` : ''}`);

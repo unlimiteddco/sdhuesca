@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { CLUB } from '../../club';
+
+/** Materiales y luces del vestuario de cada club (clubs/<club>/club.json → room) */
+const R = CLUB.room;
 
 export const RAIL_Y = 1.8;
 const LENGTH = 34;
@@ -13,7 +17,7 @@ function rng(seed: number) {
   };
 }
 
-/** Panel de lamas verticales de nogal: color + relieve */
+/** Panel de lamas verticales (madera, lacado…): color + relieve */
 function slatTextures() {
   const S = 1024, slats = 8, w = S / slats;
   const rand = rng(7);
@@ -26,15 +30,16 @@ function slatTextures() {
   for (let i = 0; i < slats; i++) {
     const tone = 0.82 + rand() * 0.36;
     const g = c.createLinearGradient(i * w, 0, (i + 1) * w, 0);
-    g.addColorStop(0, `rgb(${52 * tone},${31 * tone},${19 * tone})`);
-    g.addColorStop(0.5, `rgb(${70 * tone},${42 * tone},${25 * tone})`);
-    g.addColorStop(1, `rgb(${46 * tone},${27 * tone},${16 * tone})`);
+    const [dr, dg, db] = R.slats.dark, [mr, mg, mb] = R.slats.mid;
+    g.addColorStop(0, `rgb(${dr * tone},${dg * tone},${db * tone})`);
+    g.addColorStop(0.5, `rgb(${mr * tone},${mg * tone},${mb * tone})`);
+    g.addColorStop(1, `rgb(${dr * 0.88 * tone},${dg * 0.88 * tone},${db * 0.88 * tone})`);
     c.fillStyle = g;
     c.fillRect(i * w, 0, w, S);
     // veta
     for (let k = 0; k < 46; k++) {
       const x = i * w + rand() * w, wob = (rand() - 0.5) * 10;
-      c.strokeStyle = `rgba(${rand() > 0.5 ? '20,10,5' : '120,78,48'},${0.05 + rand() * 0.12})`;
+      c.strokeStyle = `rgba(${rand() > 0.5 ? R.slats.grain[0] : R.slats.grain[1]},${0.05 + rand() * 0.12})`;
       c.lineWidth = 0.6 + rand() * 1.6;
       c.beginPath();
       c.moveTo(x, 0);
@@ -42,7 +47,7 @@ function slatTextures() {
       c.stroke();
     }
     // ranura
-    c.fillStyle = '#080503';
+    c.fillStyle = R.slats.groove;
     c.fillRect(i * w, 0, 12, S);
     const gg = b.createLinearGradient(i * w, 0, i * w + 22, 0);
     gg.addColorStop(0, '#000');
@@ -67,9 +72,10 @@ function glowTexture() {
   c.height = 256;
   const ctx = c.getContext('2d')!;
   const g = ctx.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0, 'rgba(255,196,128,1)');
-  g.addColorStop(0.25, 'rgba(255,170,100,0.45)');
-  g.addColorStop(1, 'rgba(255,150,80,0)');
+  const [a, b, c2] = R.glow;
+  g.addColorStop(0, `rgba(${a.join(',')},1)`);
+  g.addColorStop(0.25, `rgba(${b.join(',')},0.45)`);
+  g.addColorStop(1, `rgba(${c2.join(',')},0)`);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 4, 256);
   const t = new THREE.CanvasTexture(c);
@@ -91,22 +97,22 @@ export function buildRoom(scene: THREE.Scene, anisotropy: number, lite = false) 
   map.anisotropy = anisotropy;
   const wall = new THREE.Mesh(
     new THREE.PlaneGeometry(LENGTH, 3.4),
-    new THREE.MeshStandardMaterial({ map, bumpMap, bumpScale: 2.5, roughness: 0.7, metalness: 0.05, color: 0x6e625a }),
+    new THREE.MeshStandardMaterial({ map, bumpMap, bumpScale: 2.5, roughness: 0.7, metalness: 0.05, color: R.slats.tint }),
   );
   wall.position.set(0, 1.7, -0.5);
   wall.receiveShadow = true;
   room.add(wall);
 
-  const darkWood = new THREE.MeshStandardMaterial({ color: 0x1b110a, roughness: 0.5, metalness: 0.1 });
-  const midWood = new THREE.MeshStandardMaterial({ color: 0x2c1b10, roughness: 0.55 });
-  const leather = new THREE.MeshStandardMaterial({ color: 0x4f0b18, roughness: 0.5 });
-  const brass = new THREE.MeshStandardMaterial({ color: 0xc79a5b, roughness: 0.28, metalness: 1 });
+  const darkWood = new THREE.MeshStandardMaterial({ color: R.trim, roughness: 0.5, metalness: 0.1 });
+  const midWood = new THREE.MeshStandardMaterial({ color: R.bench, roughness: 0.55 });
+  const leather = new THREE.MeshStandardMaterial({ color: R.seat, roughness: 0.5 });
+  const brass = new THREE.MeshStandardMaterial({ color: R.metal, roughness: 0.28, metalness: 1 });
 
   // altillo + tira LED
   box(LENGTH, 1.6, 0.9, darkWood, 0, 3.0, -0.1);
   const led = new THREE.Mesh(
     new THREE.BoxGeometry(LENGTH, 0.006, 0.03),
-    new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, 0.95, 0.5), toneMapped: false }),
+    new THREE.MeshBasicMaterial({ color: new THREE.Color(...R.led), toneMapped: false }),
   );
   led.position.set(0, 2.194, -0.4);
   room.add(led);
@@ -141,7 +147,7 @@ export function buildRoom(scene: THREE.Scene, anisotropy: number, lite = false) 
 
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(LENGTH, 10),
-    new THREE.MeshStandardMaterial({ color: 0x0d0907, roughness: 0.35, metalness: 0.2 }),
+    new THREE.MeshStandardMaterial({ color: R.floor, roughness: 0.35, metalness: 0.2 }),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.z = 3;
@@ -149,9 +155,9 @@ export function buildRoom(scene: THREE.Scene, anisotropy: number, lite = false) 
   room.add(floor);
 
   // luces
-  scene.add(new THREE.HemisphereLight(0xffe9d4, 0x1a0f08, 0.2));
+  scene.add(new THREE.HemisphereLight(R.hemisphere[0], R.hemisphere[1], 0.2));
   // luz principal alta y lateral: rasante sobre la tela, para que cada pliegue tenga su sombra
-  const key = new THREE.DirectionalLight(0xfff3e4, 3.4);
+  const key = new THREE.DirectionalLight(R.key, 3.4);
   key.position.set(3.1, 4.6, 2.6);
   key.target.position.set(0, 1.2, 0);
   key.castShadow = true;
@@ -163,17 +169,17 @@ export function buildRoom(scene: THREE.Scene, anisotropy: number, lite = false) 
   key.shadow.radius = 4;
   scene.add(key, key.target);
   // relleno frío desde el otro lado: recorta la silueta sin aplanar el volumen
-  const fill = new THREE.DirectionalLight(0xbfd2ff, 0.55);
+  const fill = new THREE.DirectionalLight(R.fill, 0.55);
   fill.position.set(-3.5, 2.2, 3);
   scene.add(fill);
-  const warm = new THREE.PointLight(0xffb070, 2.2, 5, 1.6);
+  const warm = new THREE.PointLight(R.warm, 2.2, 5, 1.6);
   warm.position.set(0, 2.1, 0.5);
   scene.add(warm);
 
   // velo que oscurece el vestuario cuando hay una camiseta en primer plano
   const dim = new THREE.Mesh(
     new THREE.PlaneGeometry(40, 20),
-    new THREE.MeshBasicMaterial({ color: 0x060403, transparent: true, opacity: 0, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: R.dim, transparent: true, opacity: 0, depthWrite: false }),
   );
   dim.position.set(0, 1.3, 0.85);
   dim.visible = false;

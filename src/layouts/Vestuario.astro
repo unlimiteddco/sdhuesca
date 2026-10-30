@@ -4,8 +4,9 @@ import '@fontsource-variable/archivo/wght.css';
 import '@fontsource/jetbrains-mono/latin-500.css';
 import '@fontsource/jetbrains-mono/latin-600.css';
 import '../styles/global.css';
-import { POSITIONS, SEASON, SQUAD, type Player } from '../data/squad';
-import { STATS_INFO } from '../data/stats';
+import '@club/theme.css';
+import { CLUB, SEASON, SQUAD, STATS_INFO, fill } from '../club';
+import { POSITIONS, type Player } from '../data/players';
 import { STORE } from '../data/store';
 
 interface Props {
@@ -20,15 +21,15 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 // Para que las vistas previas al compartir funcionen en producción hay que definir `site` en astro.config.mjs
 const abs = (path: string) => new URL(base + path, Astro.site ?? Astro.url.origin).href;
 const title = player
-  ? `${player.nombre} ${player.apellido} · Dorsal ${player.dorsal} · SD Huesca ${SEASON}`
+  ? `${player.nombre} ${player.apellido} · Dorsal ${player.dorsal} · ${CLUB.name} ${SEASON}`
   : custom
-    ? `Personaliza tu camiseta · SD Huesca ${SEASON}`
-    : `El vestuario del Huesca en 3D · Plantilla ${SEASON}`;
+    ? `Personaliza tu camiseta · ${CLUB.name} ${SEASON}`
+    : `${CLUB.siteName} · Plantilla ${SEASON}`;
 const description = player
-  ? `La camiseta de ${player.nombre} ${player.apellido} (${player.rol.toLowerCase()}, dorsal ${player.dorsal}) en el vestuario 3D de la SD Huesca ${SEASON}.`
+  ? `La camiseta de ${player.nombre} ${player.apellido} (${player.rol.toLowerCase()}, dorsal ${player.dorsal}) en el vestuario 3D ${CLUB.of} ${SEASON}.`
   : custom
-    ? `Pon tu nombre y tu dorsal en la camiseta de la SD Huesca ${SEASON}, mírala en 3D y cómprala en la tienda oficial.`
-    : `Recorre la percha del vestuario azulgrana: las camisetas de la SD Huesca ${SEASON} en 3D, una por jugador. Tributo no oficial.`;
+    ? `Pon tu nombre y tu dorsal en la camiseta ${CLUB.of} ${SEASON}, mírala en 3D y cómprala en la tienda oficial.`
+    : fill(CLUB.description);
 const image = abs(`/og/${player ? player.dorsal : 'vestuario'}.jpg`);
 const canonical = abs(player ? `/dorsal/${player.dorsal}/` : custom ? '/personaliza/' : '/');
 
@@ -38,28 +39,21 @@ const textures = ['/kit/campo-front.webp', '/kit/campo-back.webp', '/kit/portero
 declare const __ASSETS__: string;
 
 const count = (pos: string) => SQUAD.filter((p) => p.pos === pos).length;
-const ticker = [
-  'Tributo no oficial',
-  'No afiliado a la SD Huesca ni a la RFEF',
-  'Fieles siempre, sin reblar',
-  `Plantilla ${SEASON}`,
-  'El Alcoraz · Huesca',
-  'Hecho con cariño en Aragón',
-];
+const ticker = CLUB.ticker.map((t) => fill(t));
 // en móvil los controles crecen hasta un tamaño cómodo para el dedo
 const pill =
-  'pointer-events-auto flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/15 px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-hueso/75 transition-colors hover:border-white/40 hover:text-hueso aria-pressed:border-hueso aria-pressed:bg-hueso aria-pressed:text-noche md:h-auto md:px-2.5 md:py-1.5 md:text-[10px] md:tracking-[0.18em]';
+  'pointer-events-auto flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/15 px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-claro/75 transition-colors hover:border-white/40 hover:text-claro aria-pressed:border-claro aria-pressed:bg-claro aria-pressed:text-fondo md:h-auto md:px-2.5 md:py-1.5 md:text-[10px] md:tracking-[0.18em]';
 const round =
-  'pointer-events-auto grid shrink-0 place-items-center rounded-full border border-white/15 text-hueso/75 transition-colors hover:border-white/50 hover:text-hueso';
+  'pointer-events-auto grid shrink-0 place-items-center rounded-full border border-white/15 text-claro/75 transition-colors hover:border-white/50 hover:text-claro';
 const gold =
-  'pointer-events-auto flex items-center justify-center gap-2 rounded-full bg-oro font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-noche shadow-lg shadow-black/40 transition-[filter,transform] hover:brightness-110 active:scale-[0.98]';
+  'pointer-events-auto flex items-center justify-center gap-2 rounded-full bg-dorado font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fondo shadow-lg shadow-black/40 transition-[filter,transform] hover:brightness-110 active:scale-[0.98]';
 // la interfaz aparece cuando termina el plano de entrada
 const hud = 'opacity-0 transition-opacity duration-1000 group-data-[ready=true]/app:opacity-100';
 const tile = 'rounded-lg border border-white/10 bg-white/[0.04] px-1.5 py-1.5 text-center';
-const tileLabel = 'mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-hueso/50 landscape:text-[8px] landscape:tracking-[0.14em]';
+const tileLabel = 'mt-1 font-mono text-[9px] uppercase tracking-[0.12em] text-claro/50 landscape:text-[8px] landscape:tracking-[0.14em]';
 const field =
-  'mt-1 h-12 w-full select-text rounded-xl border border-white/15 bg-white/[0.06] px-3.5 font-display text-2xl uppercase tracking-wide text-hueso outline-none placeholder:text-hueso/25 focus:border-oro';
-const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/55';
+  'mt-1 h-12 w-full select-text rounded-xl border border-white/15 bg-white/[0.06] px-3.5 font-display text-2xl uppercase tracking-wide text-claro outline-none placeholder:text-claro/25 focus:border-dorado';
+const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-claro/55';
 ---
 
 <html lang="es">
@@ -80,7 +74,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
     <meta property="og:image" content={image} />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:locale" content="es_ES" />
-    <meta property="og:site_name" content="El vestuario del Huesca en 3D" />
+    <meta property="og:site_name" content={CLUB.siteName} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -89,7 +83,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
     {models.map((name) => <link rel="preload" as="fetch" crossorigin="anonymous" type="model/gltf-binary" href={`${base}/models/${name}.glb?v=${__ASSETS__}`} />)}
     {textures.map((path) => <link rel="preload" as="image" type="image/webp" href={`${base}${path}?v=${__ASSETS__}`} />)}
   </head>
-  <body class="overflow-hidden bg-noche font-sans text-hueso antialiased">
+  <body class="overflow-hidden bg-fondo font-sans text-claro antialiased">
     <main
       id="app"
       data-ready="false"
@@ -115,29 +109,29 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
       <header
         class:list={[
           hud,
-          'pointer-events-none absolute inset-x-0 top-0 z-[35] grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2.5 bg-gradient-to-b from-noche from-[74%] to-transparent px-4 pb-8 pt-[max(0.75rem,env(safe-area-inset-top))] md:grid-cols-[1fr_auto_1fr] md:items-start md:px-8 md:pb-9 md:pt-6',
+          'pointer-events-none absolute inset-x-0 top-0 z-[35] grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2.5 bg-gradient-to-b from-fondo from-[74%] to-transparent px-4 pb-8 pt-[max(0.75rem,env(safe-area-inset-top))] md:grid-cols-[1fr_auto_1fr] md:items-start md:px-8 md:pb-9 md:pt-6',
         ]}
       >
         <div class="flex items-center gap-2.5">
           <img
-            src={`${base}/escudo/sd-huesca.webp`}
-            alt="Escudo de la SD Huesca"
-            width="1200"
-            height="1390"
+            src={`${base}${CLUB.crest.src}`}
+            alt={CLUB.crest.alt}
+            width={CLUB.crest.width}
+            height={CLUB.crest.height}
             class="h-10 w-auto drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)] md:h-11"
           />
           <div class="hidden leading-none md:block">
             <p class="font-display text-[15px] uppercase tracking-wide">Vestuario</p>
-            <p class="mt-1 font-mono text-[9px] uppercase tracking-[0.22em] text-hueso/60">El Alcoraz</p>
+            <p class="mt-1 font-mono text-[9px] uppercase tracking-[0.22em] text-claro/60">{CLUB.stadium}</p>
           </div>
         </div>
 
         <div class="min-w-0 md:text-center">
           <h1>
-            <img src={`${base}/escudo/sdhuesca.svg`} alt="SD Huesca" width="750" height="100" class="h-[1.35rem] w-auto min-[400px]:h-6 md:mx-auto md:h-9" />
+            <img src={`${base}${CLUB.wordmark.src}`} alt={CLUB.name} width={CLUB.wordmark.width} height={CLUB.wordmark.height} class="h-[1.35rem] w-auto max-w-full object-contain object-left min-[400px]:h-6 md:mx-auto md:h-9 md:object-center" />
           </h1>
-          <p class="mt-1.5 truncate font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-oro md:mt-2 md:text-[10px] md:tracking-[0.3em]">
-            Plantilla {SEASON}<span class="hidden min-[400px]:inline"> · Primera Federación</span>
+          <p class="mt-1.5 truncate font-mono text-[9px] font-semibold uppercase tracking-[0.2em] text-dorado md:mt-2 md:text-[10px] md:tracking-[0.3em]">
+            Plantilla {SEASON}<span class="hidden min-[400px]:inline"> · {CLUB.competition}</span>
           </p>
         </div>
 
@@ -162,7 +156,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
             <div
               id="search-panel"
               hidden
-              class="fixed inset-0 z-50 flex flex-col bg-noche/[0.97] px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 md:block md:w-64 md:rounded-xl md:border md:border-white/15 md:p-2 md:shadow-2xl md:shadow-black/70"
+              class="fixed inset-0 z-50 flex flex-col bg-fondo/[0.97] px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl md:absolute md:inset-auto md:right-0 md:top-full md:mt-2 md:block md:w-64 md:rounded-xl md:border md:border-white/15 md:p-2 md:shadow-2xl md:shadow-black/70"
             >
               <div class="flex items-center gap-2">
                 <input
@@ -176,9 +170,9 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
                   autocomplete="off"
                   autocapitalize="off"
                   enterkeyhint="go"
-                  class="h-12 w-full min-w-0 select-text rounded-xl border border-white/15 bg-white/5 px-4 text-base text-hueso outline-none placeholder:text-hueso/40 focus:border-oro md:h-auto md:rounded-lg md:px-3 md:py-2 md:text-sm"
+                  class="h-12 w-full min-w-0 select-text rounded-xl border border-white/15 bg-white/5 px-4 text-base text-claro outline-none placeholder:text-claro/40 focus:border-dorado md:h-auto md:rounded-lg md:px-3 md:py-2 md:text-sm"
                 />
-                <button id="search-close" class="h-12 shrink-0 px-2 font-mono text-[11px] uppercase tracking-[0.16em] text-hueso/70 md:hidden">Cerrar</button>
+                <button id="search-close" class="h-12 shrink-0 px-2 font-mono text-[11px] uppercase tracking-[0.16em] text-claro/70 md:hidden">Cerrar</button>
               </div>
               <ul id="search-results" role="listbox" class="mt-2 min-h-0 flex-1 overflow-auto overscroll-contain md:mt-1.5 md:max-h-[52vh]"></ul>
             </div>
@@ -212,9 +206,9 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
                 data-group={p.key}
                 class="absolute left-0 top-0 flex -translate-y-full items-baseline gap-2 whitespace-nowrap opacity-0 transition-opacity duration-300 will-change-transform [text-shadow:0_1px_6px_rgba(0,0,0,0.9)]"
               >
-                <span class="h-px w-5 self-center bg-oro" />
-                <span class="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-hueso">{p.label}</span>
-                <span class="font-mono text-[10px] font-semibold text-oro">{count(p.key)}</span>
+                <span class="h-px w-5 self-center bg-dorado" />
+                <span class="font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-claro">{p.label}</span>
+                <span class="font-mono text-[10px] font-semibold text-dorado">{count(p.key)}</span>
               </div>
             ))
           }
@@ -227,9 +221,9 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
         class="pointer-events-none absolute left-0 top-0 z-10 whitespace-nowrap text-center opacity-0 transition-opacity duration-200 will-change-transform [text-shadow:0_1px_8px_rgba(0,0,0,0.95),0_0_2px_rgba(0,0,0,0.9)]"
       >
         <p class="text-base font-semibold tracking-tight md:text-sm">
-          <span id="cap-num" class="mr-1.5 font-display text-lg text-oro md:text-base"></span><span id="cap-name"></span>
+          <span id="cap-num" class="mr-1.5 font-display text-lg text-dorado md:text-base"></span><span id="cap-name"></span>
         </p>
-        <p id="cap-meta" class="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/75"></p>
+        <p id="cap-meta" class="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-claro/75"></p>
       </div>
 
       <!-- ficha del jugador / personalizador: hoja inferior en vertical, panel lateral en apaisado -->
@@ -240,13 +234,13 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
         data-view="player"
         data-more="false"
         inert
-        class="group/card pointer-events-none absolute inset-x-2 bottom-[calc(2.5rem+env(safe-area-inset-bottom))] invisible z-30 translate-y-6 rounded-2xl border border-white/15 bg-noche/55 px-4 pb-4 pt-2.5 opacity-0 shadow-2xl shadow-black/60 backdrop-blur-xl transition-all duration-500 data-[open=true]:pointer-events-auto data-[open=true]:visible data-[open=true]:translate-y-0 data-[open=true]:opacity-100 landscape:inset-x-auto landscape:bottom-auto landscape:right-[6vw] landscape:top-1/2 landscape:max-h-[calc(100dvh-7rem)] landscape:w-[min(390px,40vw)] landscape:-translate-y-[46%] landscape:overflow-y-auto landscape:overscroll-contain landscape:bg-white/[0.07] landscape:p-6 landscape:data-[open=true]:-translate-y-1/2"
+        class="group/card pointer-events-none absolute inset-x-2 bottom-[calc(2.5rem+env(safe-area-inset-bottom))] invisible z-30 translate-y-6 rounded-2xl border border-white/15 bg-fondo/55 px-4 pb-4 pt-2.5 opacity-0 shadow-2xl shadow-black/60 backdrop-blur-xl transition-all duration-500 data-[open=true]:pointer-events-auto data-[open=true]:visible data-[open=true]:translate-y-0 data-[open=true]:opacity-100 landscape:inset-x-auto landscape:bottom-auto landscape:right-[6vw] landscape:top-1/2 landscape:max-h-[calc(100dvh-7rem)] landscape:w-[min(390px,40vw)] landscape:-translate-y-[46%] landscape:overflow-y-auto landscape:overscroll-contain landscape:bg-white/[0.07] landscape:p-6 landscape:data-[open=true]:-translate-y-1/2"
       >
         <!-- asa: en móvil la hoja se amplía deslizando hacia arriba, se cierra hacia abajo y cambia de jugador a los lados -->
         <div id="card-grip" class="mx-auto -mt-2.5 w-24 cursor-pointer pb-2 pt-2.5 landscape:hidden"><div class="mx-auto h-1 w-10 rounded-full bg-white/25"></div></div>
         <button
           id="card-close"
-          class:list={[round, 'absolute right-3 top-3 z-10 h-10 w-10 bg-noche/40 landscape:right-5 landscape:top-5 landscape:h-8 landscape:w-8']}
+          class:list={[round, 'absolute right-3 top-3 z-10 h-10 w-10 bg-fondo/40 landscape:right-5 landscape:top-5 landscape:h-8 landscape:w-8']}
           aria-label="Cerrar"
         >
           <svg viewBox="0 0 16 16" class="h-3.5 w-3.5 landscape:h-3 landscape:w-3" fill="none" stroke="currentColor" stroke-width="1.6"
@@ -256,8 +250,8 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
 
         <!-- ───────────── ficha ───────────── -->
         <div class="group-data-[view=custom]/card:hidden">
-          <p class="hidden font-mono text-[10px] uppercase tracking-[0.26em] text-hueso/55 landscape:block">
-            Ficha <span id="card-pos" class="ml-2 rounded-full border border-oro/60 px-2 py-0.5 text-oro"></span>
+          <p class="hidden font-mono text-[10px] uppercase tracking-[0.26em] text-claro/55 landscape:block">
+            Ficha <span id="card-pos" class="ml-2 rounded-full border border-dorado/60 px-2 py-0.5 text-dorado"></span>
           </p>
 
           <div class="relative flex items-center gap-3.5 pr-12 landscape:mt-4 landscape:gap-4 landscape:pr-0">
@@ -269,9 +263,9 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
               height="648"
               class="h-[4.6rem] w-[3.6rem] shrink-0 rounded-xl bg-white/[0.06] object-cover object-top landscape:order-last landscape:ml-auto landscape:h-[7.5rem] landscape:w-24"
             />
-            <span id="card-num" class="font-display text-5xl leading-none text-hueso landscape:text-7xl"></span>
+            <span id="card-num" class="font-display text-5xl leading-none text-claro landscape:text-7xl"></span>
             <div class="min-w-0">
-              <p class="truncate text-base leading-tight text-hueso/80 landscape:text-lg">
+              <p class="truncate text-base leading-tight text-claro/80 landscape:text-lg">
                 <span id="card-flag" class="mr-1.5"></span><span id="card-first"></span>
               </p>
               <p id="card-last" class="truncate text-2xl font-extrabold leading-tight tracking-tight landscape:text-3xl"></p>
@@ -281,7 +275,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
           <!-- temporada en curso -->
           <div class="mt-3 grid grid-cols-4 gap-1.5 landscape:mt-4">
             <div class={tile}>
-              <p class="font-display text-xl leading-none"><span id="st-pj"></span><span id="st-tit" class="ml-1 font-mono text-[9px] text-hueso/50"></span></p>
+              <p class="font-display text-xl leading-none"><span id="st-pj"></span><span id="st-tit" class="ml-1 font-mono text-[9px] text-claro/50"></span></p>
               <p class={tileLabel}>Partidos</p>
             </div>
             <div class={tile}>
@@ -289,7 +283,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
               <p class={tileLabel}>Minutos</p>
             </div>
             <div class={tile}>
-              <p class="whitespace-nowrap font-display text-xl leading-none"><span id="st-goles"></span><span id="st-asist" class="ml-1 font-mono text-[9px] text-hueso/50"></span></p>
+              <p class="whitespace-nowrap font-display text-xl leading-none"><span id="st-goles"></span><span id="st-asist" class="ml-1 font-mono text-[9px] text-claro/50"></span></p>
               <p id="st-goles-label" class={tileLabel}>Goles</p>
             </div>
             <div class={tile}>
@@ -301,7 +295,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
             </div>
           </div>
           <div class="mt-1.5 flex items-center justify-between gap-3">
-            <p class="truncate font-mono text-[9px] uppercase tracking-[0.14em] text-hueso/40 landscape:text-[8px]">
+            <p class="truncate font-mono text-[9px] uppercase tracking-[0.14em] text-claro/40 landscape:text-[8px]">
               Liga · jornada {STATS_INFO.jornada} · {STATS_INFO.fuente}<span class="portrait:hidden"> · {STATS_INFO.fecha}</span>
             </p>
             {/* en móvil la ficha abre compacta para que la camiseta se vea grande; el resto se despliega */}
@@ -310,7 +304,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
               type="button"
               aria-expanded="false"
               aria-controls="card-data"
-              class="-my-2 flex shrink-0 items-center gap-1 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-oro landscape:hidden"
+              class="-my-2 flex shrink-0 items-center gap-1 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-dorado landscape:hidden"
             >
               <span class="group-data-[more=true]/card:hidden">Más datos</span>
               <span class="hidden group-data-[more=true]/card:inline">Menos</span>
@@ -320,7 +314,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
 
           <dl
             id="card-data"
-            class="mt-2 grid grid-cols-2 portrait:group-data-[more=false]/card:hidden gap-x-5 border-t border-white/10 font-mono text-[11px] uppercase tracking-[0.12em] landscape:mt-4 landscape:grid-cols-1 landscape:tracking-[0.14em] [&>div]:flex [&>div]:flex-col [&>div]:gap-0.5 [&>div]:border-b [&>div]:border-white/10 [&>div]:py-1.5 landscape:[&>div]:flex-row landscape:[&>div]:justify-between landscape:[&>div]:gap-4 landscape:[&>div]:py-2 [&_dd]:truncate [&_dd]:text-hueso landscape:[&_dd]:text-right [&_dt]:text-[9px] [&_dt]:text-hueso/45 landscape:[&_dt]:text-[11px]"
+            class="mt-2 grid grid-cols-2 portrait:group-data-[more=false]/card:hidden gap-x-5 border-t border-white/10 font-mono text-[11px] uppercase tracking-[0.12em] landscape:mt-4 landscape:grid-cols-1 landscape:tracking-[0.14em] [&>div]:flex [&>div]:flex-col [&>div]:gap-0.5 [&>div]:border-b [&>div]:border-white/10 [&>div]:py-1.5 landscape:[&>div]:flex-row landscape:[&>div]:justify-between landscape:[&>div]:gap-4 landscape:[&>div]:py-2 [&_dd]:truncate [&_dd]:text-claro landscape:[&_dd]:text-right [&_dt]:text-[9px] [&_dt]:text-claro/45 landscape:[&_dt]:text-[11px]"
           >
             <div><dt>Posición</dt><dd id="card-rol"></dd></div>
             <div><dt>Edad</dt><dd id="card-edad"></dd></div>
@@ -348,7 +342,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
 
         <!-- ───────────── personalizador ───────────── -->
         <form id="custom-form" class="hidden group-data-[view=custom]/card:block" novalidate>
-          <p class="font-mono text-[10px] uppercase tracking-[0.26em] text-oro">Personalizador</p>
+          <p class="font-mono text-[10px] uppercase tracking-[0.26em] text-dorado">Personalizador</p>
           <h2 class="mt-1 font-display text-3xl uppercase leading-none tracking-tight landscape:text-4xl">Hazla tuya</h2>
 
           <div class="mt-3 grid grid-cols-[1fr_5.5rem] gap-2.5 landscape:mt-5">
@@ -357,7 +351,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
               <input
                 id="cu-name"
                 class={field}
-                maxlength={STORE.maxName}
+                maxlength={CLUB.lettering.maxName}
                 placeholder="Tu nombre"
                 autocomplete="off"
                 autocapitalize="characters"
@@ -367,11 +361,11 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
             </label>
             <label class={fieldLabel}>
               Dorsal
-              <input id="cu-num" class:list={[field, 'text-center']} maxlength={STORE.maxNumber} placeholder="12" inputmode="numeric" autocomplete="off" enterkeyhint="done" />
+              <input id="cu-num" class:list={[field, 'text-center']} maxlength={CLUB.lettering.maxNumber} placeholder="12" inputmode="numeric" autocomplete="off" enterkeyhint="done" />
             </label>
           </div>
-          <p class="mt-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-hueso/40">
-            Hasta {STORE.maxName} letras y {STORE.maxNumber} cifras, como en la tienda
+          <p class="mt-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-claro/40">
+            Hasta {CLUB.lettering.maxName} letras y {CLUB.lettering.maxNumber} cifras, como en la tienda
           </p>
 
           <fieldset class="mt-3 landscape:mt-4">
@@ -380,8 +374,8 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
               {
                 STORE.sizes.map((s, i) => (
                   <label class="flex-1">
-                    <input type="radio" name="talla" value={s.variant} checked={i === 1} class="peer sr-only" />
-                    <span class="flex h-10 cursor-pointer items-center justify-center rounded-lg border border-white/15 font-mono text-xs font-semibold text-hueso/70 transition-colors peer-checked:border-hueso peer-checked:bg-hueso peer-checked:text-noche peer-focus-visible:ring-2 peer-focus-visible:ring-oro">
+                    <input type="radio" name="talla" value={s.variant} checked={s.label === STORE.defaultSize} class="peer sr-only" />
+                    <span class="flex h-10 cursor-pointer items-center justify-center rounded-lg border border-white/15 font-mono text-xs font-semibold text-claro/70 transition-colors peer-checked:border-claro peer-checked:bg-claro peer-checked:text-fondo peer-focus-visible:ring-2 peer-focus-visible:ring-dorado">
                       {s.label}
                     </span>
                   </label>
@@ -400,15 +394,15 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
             <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 2.5h2l1.5 8h7l1.3-5.5H5M6.5 13.5h.01M11.5 13.5h.01"></path></svg>
             Añadir a la cesta oficial
           </a>
-          <p class="mt-2 text-[11px] leading-snug text-hueso/50">
-            Se abre <span class="text-hueso/80">tienda.sdhuesca.es</span> con tu nombre y tu dorsal ya puestos. El precio y el pago son allí.
+          <p class="mt-2 text-[11px] leading-snug text-claro/50">
+            Se abre <span class="text-claro/80">{STORE.domain}</span> con tu nombre y tu dorsal ya puestos. El precio y el pago son allí.
           </p>
           <div class="mt-3 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
-            <button id="cu-share" type="button" class="flex h-9 items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-hueso/75 hover:text-hueso">
+            <button id="cu-share" type="button" class="flex h-9 items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-claro/75 hover:text-claro">
               <svg viewBox="0 0 16 16" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 10V2M5 4.5L8 1.5l3 3M3 8v5.5h10V8"></path></svg>
               Compartir diseño
             </button>
-            <a href={STORE.product} target="_blank" rel="noopener" class="font-mono text-[10px] uppercase tracking-[0.16em] text-hueso/55 underline underline-offset-4 hover:text-hueso">
+            <a href={STORE.product} target="_blank" rel="noopener" class="font-mono text-[10px] uppercase tracking-[0.16em] text-claro/55 underline underline-offset-4 hover:text-claro">
               Ver en la tienda
             </a>
           </div>
@@ -418,12 +412,12 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
       <div
         id="toast"
         role="status"
-        class="pointer-events-none absolute bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-hueso px-4 py-2 text-xs font-semibold text-noche opacity-0 transition-opacity duration-300"
+        class="pointer-events-none absolute bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-claro px-4 py-2 text-xs font-semibold text-fondo opacity-0 transition-opacity duration-300"
       >
       </div>
 
       <!-- pie -->
-      <footer class:list={[hud, 'absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-noche/90 from-40% to-transparent pt-8']}>
+      <footer class:list={[hud, 'absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-fondo/90 from-40% to-transparent pt-8']}>
         <div class="flex items-end justify-between gap-3 px-4 pb-3 transition-opacity duration-300 portrait:group-data-[card=open]/app:pointer-events-none portrait:group-data-[card=open]/app:invisible portrait:group-data-[card=open]/app:opacity-0 md:px-8">
           <div class="min-w-0">
             <p class="truncate text-xs text-zinc-500">© 2026 · Tributo no oficial de un aficionado</p>
@@ -439,13 +433,13 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
               <span class="relative font-semibold tracking-tight text-zinc-400 transition-colors group-hover:text-white">
                 Bellostas Studio
                 <span
-                  class="absolute -bottom-0.5 left-0 right-0 h-px origin-left scale-x-0 bg-grana-viva transition-transform duration-300 group-hover:scale-x-100"
+                  class="absolute -bottom-0.5 left-0 right-0 h-px origin-left scale-x-0 bg-acento-vivo transition-transform duration-300 group-hover:scale-x-100"
                 ></span>
               </span>
             </a>
           </div>
           <div class="flex shrink-0 items-center gap-3">
-            <p id="hint" class="hidden font-mono text-[10px] uppercase tracking-[0.24em] text-hueso/60 transition-opacity duration-700 lg:block">
+            <p id="hint" class="hidden font-mono text-[10px] uppercase tracking-[0.24em] text-claro/60 transition-opacity duration-700 lg:block">
               Arrastra la barra · Clic para abrir
             </p>
             <button data-personaliza class:list={[gold, 'hidden h-9 px-4 md:flex']}>
@@ -461,15 +455,15 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
             </button>
           </div>
         </div>
-        <div class="overflow-hidden border-t border-white/10 bg-grana pb-[env(safe-area-inset-bottom)]" aria-hidden="true">
+        <div class="overflow-hidden border-t border-white/10 bg-acento pb-[env(safe-area-inset-bottom)]" aria-hidden="true">
           <div class="flex w-max animate-ticker py-2">
             {
               [0, 1].map(() => (
                 <div class="flex shrink-0">
                   {ticker.map((t) => (
-                    <span class="flex items-center font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-hueso">
+                    <span class="flex items-center font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-claro">
                       <span class="px-6">{t}</span>
-                      <span class="h-1 w-1 rotate-45 bg-oro" />
+                      <span class="h-1 w-1 rotate-45 bg-dorado" />
                     </span>
                   ))}
                 </div>
@@ -483,14 +477,14 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
       <div
         id="loader"
         data-done="false"
-        class="absolute inset-0 z-40 grid place-items-center bg-noche transition-transform duration-[1100ms] ease-[cubic-bezier(0.76,0,0.24,1)] data-[done=true]:pointer-events-none data-[done=true]:-translate-y-full"
+        class="absolute inset-0 z-40 grid place-items-center bg-fondo transition-transform duration-[1100ms] ease-[cubic-bezier(0.76,0,0.24,1)] data-[done=true]:pointer-events-none data-[done=true]:-translate-y-full"
       >
         <div class="text-center">
-          <img src={`${base}/escudo/sd-huesca.webp`} alt="" width="1200" height="1390" class="mx-auto h-28 w-auto" />
-          <img src={`${base}/escudo/sdhuesca.svg`} alt="SD Huesca" width="750" height="100" class="mx-auto mt-7 h-8 w-auto" />
-          <p class="mt-3.5 font-mono text-[10px] font-semibold uppercase tracking-[0.3em] text-oro">El vestuario · {SEASON}</p>
+          <img src={`${base}${CLUB.crest.src}`} alt="" width={CLUB.crest.width} height={CLUB.crest.height} class="mx-auto h-28 w-auto" />
+          <img src={`${base}${CLUB.wordmark.src}`} alt={CLUB.name} width={CLUB.wordmark.width} height={CLUB.wordmark.height} class="mx-auto mt-7 h-8 w-auto" />
+          <p class="mt-3.5 font-mono text-[10px] font-semibold uppercase tracking-[0.3em] text-dorado">El vestuario · {SEASON}</p>
           <div class="mx-auto mt-7 h-px w-48 overflow-hidden bg-white/15">
-            <div id="loader-bar" class="h-full w-[8%] bg-oro transition-[width] duration-700"></div>
+            <div id="loader-bar" class="h-full w-[8%] bg-dorado transition-[width] duration-700"></div>
           </div>
         </div>
       </div>
@@ -498,7 +492,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
 
     <!-- versión accesible / sin WebGL -->
     <section id="fallback" class="sr-only">
-      <h2>Plantilla SD Huesca {SEASON}</h2>
+      <h2>Plantilla {CLUB.name} {SEASON}</h2>
       <ul>
         {
           SQUAD.map((p) => (
@@ -513,8 +507,8 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
     </section>
 
     <script>
-      import { POSITIONS, SEASON, SQUAD, type Player, type Pos } from '../data/squad';
-      import { STATS } from '../data/stats';
+      import { CLUB, SEASON, SQUAD, STATS } from '../club';
+      import { POSITIONS, type Player, type Pos } from '../data/players';
       import { cartUrl } from '../data/store';
       import { LockerRoom } from '../scripts/locker/experience';
       import { loadKitAssets } from '../scripts/locker/jersey';
@@ -535,7 +529,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
       );
       const posLabel = (pos: Pos) => POSITIONS.find((p) => p.key === pos)!.label;
       const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
-      const HOME_TITLE = `El vestuario del Huesca en 3D · Plantilla ${SEASON}`;
+      const HOME_TITLE = `${CLUB.siteName} · Plantilla ${SEASON}`;
       const touch = matchMedia('(hover: none)').matches;
       const photo = (p: Player) => `${BASE}/jugadores/${p.dorsal}.webp`;
       if (touch) $('#hint').textContent = 'Desliza la barra · Toca para abrir';
@@ -586,9 +580,9 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
       };
       const titleFor = (t: Target) =>
         t === 'custom'
-          ? `Personaliza tu camiseta · SD Huesca ${SEASON}`
+          ? `Personaliza tu camiseta · ${CLUB.name} ${SEASON}`
           : t
-            ? `${t.nombre} ${t.apellido} · Dorsal ${t.dorsal} · SD Huesca ${SEASON}`
+            ? `${t.nombre} ${t.apellido} · Dorsal ${t.dorsal} · ${CLUB.name} ${SEASON}`
             : HOME_TITLE;
       let current: Target = null;
       let fromHistory = false;
@@ -642,7 +636,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
       // las camisetas se pintan en un canvas: hay que esperar a las tipografías
       await Promise.all([
         document.fonts.load('400 64px Anton', 'ÁÉÍÓÚ09'),
-        document.fonts.load('400 64px "Archivo Dorsal"', 'ÁÉÍÓÚÑ'),
+        ...CLUB.lettering.fonts.map((f) => document.fonts.load(`400 64px "${f.family}"`, 'ÁÉÍÓÚÑ')),
         document.fonts.load('600 16px "JetBrains Mono"'),
       ]).catch(() => {});
       bar.style.width = '30%';
@@ -717,7 +711,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
       } catch (err) {
         console.error(err);
         $('#fallback').className =
-          'absolute inset-0 z-50 overflow-auto bg-noche p-8 text-hueso [&_a]:underline [&_h2]:font-display [&_h2]:text-3xl [&_li]:py-1';
+          'absolute inset-0 z-50 overflow-auto bg-fondo p-8 text-claro [&_a]:underline [&_h2]:font-display [&_h2]:text-3xl [&_li]:py-1';
       }
       bar.style.width = '100%';
       loader.dataset.done = 'true';
@@ -772,7 +766,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
         $('#card-next').addEventListener('click', () => room.step(1));
         $('#card-share').addEventListener('click', () => {
           if (current && current !== 'custom') {
-            share(location.origin + pathFor(current), `${current.nombre} ${current.apellido}, dorsal ${current.dorsal} de la SD Huesca`);
+            share(location.origin + pathFor(current), `${current.nombre} ${current.apellido}, dorsal ${current.dorsal} ${CLUB.of}`);
           }
         });
 
@@ -824,7 +818,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
         for (const btn of document.querySelectorAll('[data-personaliza]')) btn.addEventListener('click', () => openCustom());
         $('#card-custom').addEventListener('click', () => openCustom(current && current !== 'custom' ? current : undefined));
         $('#cu-share').addEventListener('click', () =>
-          share(location.origin + pathFor('custom'), 'Mira cómo queda mi camiseta de la SD Huesca'),
+          share(location.origin + pathFor('custom'), `Mira cómo queda mi camiseta ${CLUB.of}`),
         );
         // un enlace compartido trae el diseño en la dirección
         const q = new URLSearchParams(location.search);
@@ -862,13 +856,13 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
               face.loading = 'lazy';
               face.className = 'h-11 w-11 shrink-0 rounded-full bg-white/10 object-cover object-top md:h-8 md:w-8';
               const num = document.createElement('span');
-              num.className = 'w-8 text-right font-display text-2xl leading-none text-oro md:w-7 md:text-lg';
+              num.className = 'w-8 text-right font-display text-2xl leading-none text-dorado md:w-7 md:text-lg';
               num.textContent = String(p.dorsal);
               const name = document.createElement('span');
               name.className = 'min-w-0 flex-1 truncate text-base font-semibold md:text-sm';
               name.textContent = `${p.nombre} ${p.apellido}`;
               const role = document.createElement('span');
-              role.className = 'font-mono text-[10px] uppercase tracking-[0.16em] text-hueso/50 md:text-[9px]';
+              role.className = 'font-mono text-[10px] uppercase tracking-[0.16em] text-claro/50 md:text-[9px]';
               role.textContent = p.pos;
               li.append(face, num, name, role);
               li.addEventListener('click', () => choose(p));
@@ -877,7 +871,7 @@ const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-hueso/
           );
           if (!matches.length) {
             const li = document.createElement('li');
-            li.className = 'px-2.5 py-3 text-base text-hueso/50 md:py-2 md:text-sm';
+            li.className = 'px-2.5 py-3 text-base text-claro/50 md:py-2 md:text-sm';
             li.textContent = 'Nadie con ese nombre o dorsal';
             results.append(li);
           }

@@ -1,0 +1,50 @@
+{
+  "campo": {
+    "crop": {
+      "x": 190,
+      "y": 40,
+      "w": 1110,
+      "h": 1420
+    },
+    "lining": "#e6e4df",
+    "text": {
+      "cx": 765,
+      "top": 63,
+      "ppm": 1771.6,
+      "ink": "#143933",
+      "edge": "#143933",
+      "lettering": {
+        "font": "Saira Dorsal",
+        "nameSize": 116,
+        "nameCentre": 223,
+        "numberCentre": 568,
+        "numberHeight": 420,
+        "digitGap": 33
+      }
+    }
+  },
+  "portero": {
+    "crop": {
+      "x": 180,
+      "y": 40,
+      "w": 1140,
+      "h": 1420
+    },
+    "lining": "#1c1c1e",
+    "text": {
+      "cx": 750,
+      "top": 66,
+      "ppm": 1765.2,
+      "ink": "#b2b0b1",
+      "edge": "#b2b0b1",
+      "lettering": {
+        "font": "Saira Portero",
+        "nameSize": 113,
+        "nameCentre": 203,
+        "numberCentre": 563,
+        "numberHeight": 420,
+        "digitGap": 33
+      }
+    }
+  }
+}

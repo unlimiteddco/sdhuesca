@@ -1,9 +1,9 @@
 """Convierte los modelos de atrezo en GLB ligeros para la web.
 
-  balón  Poly Haven "football" (CC0)                     -> public/models/balon.glb
-  botas  generadas con Magnific (texto a 3D, motor Tripo) -> public/models/bota-*.glb
+  balón  Poly Haven "football" (CC0)                     -> clubs/<club>/public/models/balon.glb
+  botas  generadas con Magnific (texto a 3D, motor Tripo) -> clubs/<club>/public/models/bota-*.glb
 
-Uso: blender -b -P tools/kit/props.py -- <carpeta polyhaven> <carpeta botas>
+Uso: blender -b -P tools/kit/props.py -- <carpeta polyhaven> <carpeta botas> [--club <club>]
 Cada modelo queda centrado, apoyado en el suelo, a tamaño real y con las texturas dentro del .glb
 (en WebP: 1K las botas y 512 px el balón, que en pantalla es pequeño).
 Las botas quedan con el largo a lo largo del eje X.
@@ -17,7 +17,8 @@ import numpy as np
 from mathutils import Vector
 
 ARGS = sys.argv[sys.argv.index("--") + 1 :]
-OUT = Path(__file__).parent.parent.parent / "public" / "models"
+CLUB = ARGS[ARGS.index("--club") + 1] if "--club" in ARGS else "huesca"
+OUT = Path(__file__).parent.parent.parent / "clubs" / CLUB / "public" / "models"
 
 
 def bounds(obj):
