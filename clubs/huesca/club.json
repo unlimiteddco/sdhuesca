@@ -191,5 +191,15 @@
     "gold": "#e2b65e",
     "footer": "Vestuario 3D · El Alcoraz · Tributo no oficial",
     "wordmarkWidth": 232
+  },
+  "callup": {
+    "cheer": "Fieles siempre, sin reblar",
+    "next": {
+      "rival": "Real Zaragoza",
+      "jornada": "11",
+      "fecha": "Dom 8 nov",
+      "campo": "Ibercaja Estadio",
+      "casa": false
+    }
   }
 }

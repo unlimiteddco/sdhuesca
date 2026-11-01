@@ -1,0 +1,356 @@
+---
+// Generador del vídeo de la convocatoria (/convocatoria/): se marcan los convocados y se descarga en vertical.
+// La lista y el partido viajan en la dirección, así que el enlace sirve para volver a abrirla o compartirla.
+import '@fontsource/anton/latin-400.css';
+import '@fontsource-variable/archivo/wght.css';
+import '@fontsource/jetbrains-mono/latin-500.css';
+import '@fontsource/jetbrains-mono/latin-600.css';
+import '../styles/global.css';
+import '@club/theme.css';
+import { CLUB, SEASON } from '../club';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const title = `Convocatoria en vídeo · ${CLUB.name} ${SEASON}`;
+const next = CLUB.callup.next;
+
+const fieldLabel = 'font-mono text-[10px] uppercase tracking-[0.2em] text-claro/55';
+const field =
+  'mt-1 h-11 w-full rounded-xl border border-white/15 bg-white/[0.06] px-3.5 text-[15px] text-claro outline-none placeholder:text-claro/30 focus:border-dorado';
+const toggle =
+  'flex h-10 flex-1 items-center justify-center rounded-full border border-white/15 font-mono text-[11px] uppercase tracking-[0.16em] text-claro/70 transition-colors hover:border-white/40 aria-pressed:border-claro aria-pressed:bg-claro aria-pressed:text-fondo';
+const small =
+  'rounded-full border border-white/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-claro/70 transition-colors hover:border-white/40 hover:text-claro';
+const gold =
+  'flex h-12 items-center justify-center gap-2 rounded-full bg-dorado px-6 font-mono text-[12px] font-semibold uppercase tracking-[0.16em] text-fondo shadow-lg shadow-black/40 transition-[filter,transform] hover:brightness-110 active:scale-[0.98] disabled:opacity-50';
+const ghost =
+  'flex h-12 items-center justify-center gap-2 rounded-full border border-white/20 px-5 font-mono text-[11px] uppercase tracking-[0.16em] text-claro/80 transition-colors hover:border-white/50 hover:text-claro disabled:opacity-40';
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/png" href={`${base}/escudo/favicon.png`} />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#070504" />
+    <meta name="robots" content="noindex" />
+    <title>{title}</title>
+    <meta name="description" content={`Monta el vídeo de la convocatoria ${CLUB.of} con las camisetas del vestuario 3D.`} />
+  </head>
+  <body class="min-h-dvh bg-fondo font-sans text-claro antialiased">
+    <main class="mx-auto grid max-w-6xl gap-8 px-4 pb-10 pt-[max(1.25rem,env(safe-area-inset-top))] md:grid-cols-[minmax(0,1fr)_auto] md:px-8 md:pt-8">
+      <!-- vista previa y descarga -->
+      <aside class="self-start md:sticky md:top-8 md:order-2">
+        <div class="relative mx-auto aspect-[9/16] h-[min(68vh,640px)] max-w-full overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl shadow-black/60 md:h-[calc(100dvh-10rem)] md:max-h-[860px]">
+          <canvas id="video" class="h-full w-full"></canvas>
+          <div id="loading" class="absolute inset-0 grid place-items-center bg-fondo transition-opacity duration-500 data-[done=true]:pointer-events-none data-[done=true]:opacity-0">
+            <div class="text-center">
+              <img src={`${base}${CLUB.crest.src}`} alt="" width={CLUB.crest.width} height={CLUB.crest.height} class="mx-auto h-20 w-auto" />
+              <p class="mt-5 font-mono text-[10px] uppercase tracking-[0.3em] text-dorado">Preparando el vestuario</p>
+            </div>
+          </div>
+          <div id="busy" hidden class="absolute inset-x-0 bottom-0 bg-black/75 px-5 py-4 backdrop-blur">
+            <p class="font-mono text-[10px] uppercase tracking-[0.2em] text-claro/80">Grabando el vídeo · <span id="busy-pct">0 %</span></p>
+            <div class="mt-2 h-1 overflow-hidden rounded bg-white/15"><div id="busy-bar" class="h-full w-0 bg-dorado"></div></div>
+          </div>
+        </div>
+        <div class="mx-auto mt-4 flex max-w-sm flex-wrap justify-center gap-2">
+          <button id="export" class:list={[gold, 'flex-1']} disabled>
+            <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 2v8.5M4.5 7L8 10.5 11.5 7M2.5 13.5h11"></path></svg>
+            Descargar vídeo
+          </button>
+          <button id="replay" class={ghost} aria-label="Ver desde el principio">
+            <svg viewBox="0 0 16 16" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8a5 5 0 105-5H5.5M7.5 1L5 3.2 7.5 5.4"></path></svg>
+          </button>
+        </div>
+        <div id="result" hidden class="mx-auto mt-3 flex max-w-sm gap-2">
+          <a id="save" class:list={[ghost, 'flex-1']} download="convocatoria.mp4">Guardar</a>
+          <button id="share" hidden class:list={[ghost, 'flex-1']}>Compartir</button>
+        </div>
+        <p id="note" class="mx-auto mt-3 max-w-sm text-center text-xs text-claro/50">Vertical 1080×1920, listo para reels y stories. Añade la música en Instagram.</p>
+      </aside>
+
+      <!-- editor -->
+      <section class="md:order-1">
+        <div class="flex items-center gap-3">
+          <img src={`${base}${CLUB.crest.src}`} alt={CLUB.crest.alt} width={CLUB.crest.width} height={CLUB.crest.height} class="h-12 w-auto" />
+          <div>
+            <h1 class="font-display text-4xl uppercase leading-none">Convocatoria</h1>
+            <p class="mt-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-dorado">{CLUB.name} · {SEASON}</p>
+          </div>
+          <a href={`${base}/`} class:list={[small, 'ml-auto']}>← Vestuario</a>
+        </div>
+        <p class="mt-5 max-w-prose text-sm text-claro/65">
+          Marca los convocados y el partido: las perchas llegan a la barra una a una, por bloques, y descargas el vídeo vertical para tus redes.
+        </p>
+
+        <fieldset class="mt-7">
+          <legend class={fieldLabel}>Partido</legend>
+          <div class="mt-3 grid grid-cols-2 gap-3">
+            <label class="col-span-2 block"><span class={fieldLabel}>Rival</span><input id="rival" class={field} autocomplete="off" value={next.rival} placeholder="Nombre del rival" /></label>
+            <label class="block"><span class={fieldLabel}>Jornada</span><input id="jornada" class={field} inputmode="numeric" autocomplete="off" value={next.jornada} placeholder="11" /></label>
+            <label class="block"><span class={fieldLabel}>Día y hora</span><input id="fecha" class={field} autocomplete="off" value={next.fecha} placeholder="Dom 8 nov · 18:30" /></label>
+            <label class="col-span-2 block"><span class={fieldLabel}>Estadio</span><input id="campo" class={field} autocomplete="off" value={next.campo} placeholder={CLUB.stadium} /></label>
+            <div class="col-span-2 flex gap-2" role="group" aria-label="Local o visitante">
+              <button data-casa="1" class={toggle} aria-pressed={String(next.casa)}>En casa</button>
+              <button data-casa="0" class={toggle} aria-pressed={String(!next.casa)}>Fuera</button>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="mt-7">
+          <legend class={fieldLabel}>Formato</legend>
+          <div class="mt-3 flex gap-2" role="group">
+            <button data-mode="c" class={toggle} aria-pressed="true">Convocatoria</button>
+            <button data-mode="o" class={toggle} aria-pressed="false">Once y banquillo</button>
+          </div>
+          <p id="mode-help" class="mt-2 text-xs text-claro/50"></p>
+        </fieldset>
+
+        <fieldset class="mt-7">
+          <div class="flex flex-wrap items-center gap-2">
+            <legend class={fieldLabel}>Jugadores</legend>
+            <span id="count" class="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-dorado"></span>
+            <button id="all" class:list={[small, 'ml-auto']}>Todos</button>
+            <button id="none" class={small}>Ninguno</button>
+          </div>
+          <div id="players" class="mt-3 space-y-5"></div>
+        </fieldset>
+      </section>
+    </main>
+
+    <footer class="mx-auto max-w-6xl border-t border-white/10 px-4 py-6 md:px-8">
+      <p class="text-xs text-zinc-500">© 2026 · Tributo no oficial de un aficionado</p>
+      {/* Crédito Bellostas Studio */}
+      <a
+        href="https://bellostas.studio"
+        target="_blank"
+        rel="noopener"
+        class="group mt-1.5 inline-flex items-center gap-1.5 text-xs text-zinc-500 transition-colors hover:text-white"
+        aria-label="Web diseñada y desarrollada por Bellostas Studio"
+      >
+        <span>Diseñado y desarrollado por</span>
+        <span class="relative font-semibold tracking-tight text-zinc-400 transition-colors group-hover:text-white">
+          Bellostas Studio
+          <span class="absolute -bottom-0.5 left-0 right-0 h-px origin-left scale-x-0 bg-acento-vivo transition-transform duration-300 group-hover:scale-x-100"></span>
+        </span>
+      </a>
+    </footer>
+
+    <script>
+      import { CLUB, SQUAD } from '../club';
+      import { POSITIONS, type Player } from '../data/players';
+      import { CallUp, type Match, type Section } from '../scripts/locker/callup';
+      import { recordCallUp } from '../scripts/locker/callup-video';
+      import { loadKitAssets } from '../scripts/locker/jersey';
+
+      const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
+      const input = (id: string) => $<HTMLInputElement>(`#${id}`);
+
+      // ------------------------------------------------------------------ estado (en la dirección)
+      type Mode = 'c' | 'o';
+      const q = new URLSearchParams(location.search);
+      const list = (k: string) => (q.get(k) ?? '').split(',').filter(Boolean).map(Number);
+      let mode: Mode = q.get('modo') === 'o' ? 'o' : 'c';
+      // por defecto, toda la plantilla convocada
+      const called = new Set(q.has('c') ? list('c') : SQUAD.map((p) => p.dorsal));
+      const starters = new Set(list('t'));
+      for (const k of ['rival', 'jornada', 'fecha', 'campo']) if (q.has(k)) input(k).value = q.get(k)!;
+      let casa = q.has('casa') ? q.get('casa') === '1' : CLUB.callup.next.casa;
+
+      const match = (): Match => ({
+        rival: input('rival').value.trim(),
+        jornada: input('jornada').value.trim(),
+        fecha: input('fecha').value.trim(),
+        campo: input('campo').value.trim(),
+        casa,
+      });
+
+      const sections = (): Section[] => {
+        if (mode === 'c') return POSITIONS.map((p) => ({ label: p.label, players: SQUAD.filter((s) => s.pos === p.key && called.has(s.dorsal)) }));
+        return [
+          { label: 'Once inicial', players: SQUAD.filter((s) => starters.has(s.dorsal)) },
+          { label: 'Banquillo', players: SQUAD.filter((s) => called.has(s.dorsal) && !starters.has(s.dorsal)) },
+        ];
+      };
+
+      const saveUrl = () => {
+        const m = match(), p = new URLSearchParams();
+        for (const [k, v] of Object.entries({ rival: m.rival, jornada: m.jornada, fecha: m.fecha, campo: m.campo })) if (v) p.set(k, v);
+        p.set('casa', casa ? '1' : '0');
+        p.set('modo', mode);
+        p.set('c', [...called].join(','));
+        if (mode === 'o' && starters.size) p.set('t', [...starters].join(','));
+        history.replaceState(null, '', `${location.pathname}?${p}`);
+      };
+
+      // ------------------------------------------------------------------ lista de jugadores
+      const state = (p: Player) => (!called.has(p.dorsal) ? 'out' : mode === 'o' && starters.has(p.dorsal) ? 'start' : 'in');
+      const STATE_LABEL = { out: 'Fuera', in: 'Convocado', start: 'Titular' };
+      const players = $('#players');
+      players.innerHTML = POSITIONS.map(
+        (pos) => `<div>
+          <p class="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-claro/45">${pos.label}</p>
+          <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-2">${SQUAD.filter((p) => p.pos === pos.key)
+            .map(
+              (p) => `<button data-dorsal="${p.dorsal}" class="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition-colors data-[state=in]:border-white/30 data-[state=in]:bg-white/[0.08] data-[state=start]:border-dorado data-[state=start]:bg-dorado/15 data-[state=out]:opacity-45">
+                <span class="w-8 font-display text-2xl leading-none text-dorado">${p.dorsal}</span>
+                <span class="min-w-0 flex-1"><span class="block truncate text-sm font-semibold">${p.nombre} ${p.apellido}</span><span class="block truncate font-mono text-[9px] uppercase tracking-[0.14em] text-claro/50">${p.rol}</span></span>
+                <span data-label class="shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] text-claro/60"></span>
+              </button>`,
+            )
+            .join('')}</div>
+        </div>`,
+      ).join('');
+
+      const paint = () => {
+        for (const b of players.querySelectorAll<HTMLElement>('[data-dorsal]')) {
+          const p = SQUAD.find((s) => s.dorsal === +b.dataset.dorsal!)!;
+          const s = state(p);
+          b.dataset.state = s;
+          b.setAttribute('aria-label', `${p.dorsal} ${p.nombre} ${p.apellido}: ${STATE_LABEL[s]}`);
+          b.querySelector('[data-label]')!.textContent = STATE_LABEL[s];
+        }
+        const n = called.size, t = [...starters].filter((d) => called.has(d)).length;
+        $('#count').textContent = mode === 'o' ? `${t} titulares · ${n - t} banquillo` : `${n} convocados`;
+        $('#mode-help').textContent =
+          mode === 'o' ? 'Toca un jugador para pasar de convocado a titular, y de titular a fuera.' : 'Toca un jugador para quitarlo o volver a convocarlo.';
+        for (const b of document.querySelectorAll<HTMLElement>('[data-mode]')) b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+        for (const b of document.querySelectorAll<HTMLElement>('[data-casa]')) b.setAttribute('aria-pressed', String((b.dataset.casa === '1') === casa));
+      };
+
+      players.addEventListener('click', (e) => {
+        const b = (e.target as HTMLElement).closest<HTMLElement>('[data-dorsal]');
+        if (!b) return;
+        const d = +b.dataset.dorsal!;
+        // convocatoria: dentro ↔ fuera · once: convocado → titular → fuera → convocado
+        if (!called.has(d)) called.add(d);
+        else if (mode === 'o' && !starters.has(d)) starters.add(d);
+        else {
+          called.delete(d);
+          starters.delete(d);
+        }
+        changed();
+      });
+      $('#all').addEventListener('click', () => {
+        for (const p of SQUAD) called.add(p.dorsal);
+        changed();
+      });
+      $('#none').addEventListener('click', () => {
+        called.clear();
+        starters.clear();
+        changed();
+      });
+      for (const b of document.querySelectorAll<HTMLElement>('[data-mode]')) {
+        b.addEventListener('click', () => {
+          mode = b.dataset.mode as Mode;
+          changed();
+        });
+      }
+      for (const b of document.querySelectorAll<HTMLElement>('[data-casa]')) {
+        b.addEventListener('click', () => {
+          casa = b.dataset.casa === '1';
+          if (casa && !input('campo').value) input('campo').value = CLUB.stadium;
+          changed();
+        });
+      }
+      for (const k of ['rival', 'jornada', 'fecha', 'campo']) input(k).addEventListener('input', () => changed());
+
+      // ------------------------------------------------------------------ vídeo
+      const canvas = $<HTMLCanvasElement>('#video');
+      let callup: CallUp | undefined;
+      let recording = false;
+      let timer = 0;
+
+      // cada cambio vuelve a montar la barra (todas las texturas): se espera a que deje de teclear
+      function changed() {
+        paint();
+        saveUrl();
+        clearTimeout(timer);
+        timer = window.setTimeout(() => callup?.setPlan(sections(), match()), 450);
+        $('#result').hidden = true;
+      }
+
+      const fit = () => {
+        if (!callup || recording) return;
+        const w = Math.min(1080, Math.round(canvas.clientWidth * Math.min(devicePixelRatio, 2)));
+        callup.setSize(w, Math.round((w * 16) / 9));
+      };
+
+      let last = performance.now();
+      const loop = () => {
+        requestAnimationFrame(loop);
+        const now = performance.now(), dt = Math.min((now - last) / 1000, 1 / 20);
+        last = now;
+        if (!callup || recording) return;
+        callup.advance(dt);
+        callup.draw();
+        // se queda un momento en el cierre y vuelve a empezar
+        if (callup.time > callup.duration + 1.5) callup.restart();
+      };
+
+      paint();
+      try {
+        await Promise.all([
+          document.fonts.load('400 64px Anton', 'ÁÉÍÓÚ09'),
+          ...CLUB.lettering.fonts.map((f) => document.fonts.load(`400 64px "${f.family}"`, 'ÁÉÍÓÚÑ')),
+          document.fonts.load('600 16px "JetBrains Mono"'),
+        ]).catch(() => {});
+        callup = new CallUp(canvas, await loadKitAssets());
+        fit();
+        callup.setPlan(sections(), match());
+        new ResizeObserver(fit).observe(canvas);
+        $('#loading').dataset.done = 'true';
+        $<HTMLButtonElement>('#export').disabled = false;
+        requestAnimationFrame(loop);
+      } catch (err) {
+        console.error(err);
+        $('#loading').querySelector('p')!.textContent = 'Este navegador no puede mostrar el vestuario 3D';
+      }
+
+      $('#replay').addEventListener('click', () => callup?.restart());
+
+      let file: File | undefined;
+      $('#export').addEventListener('click', async () => {
+        if (!callup || recording) return;
+        clearTimeout(timer);
+        callup.setPlan(sections(), match());
+        recording = true;
+        const btn = $<HTMLButtonElement>('#export');
+        btn.disabled = true;
+        $('#busy').hidden = false;
+        $('#result').hidden = true;
+        try {
+          const raw = await recordCallUp(callup, (done) => {
+            $('#busy-pct').textContent = `${Math.round(done * 100)} %`;
+            $('#busy-bar').style.width = `${done * 100}%`;
+          });
+          const slug = (match().rival || 'partido').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          file = new File([raw], `convocatoria-${slug}.${raw.name.split('.').pop()}`, { type: raw.type });
+          const save = $<HTMLAnchorElement>('#save');
+          URL.revokeObjectURL(save.href);
+          save.href = URL.createObjectURL(file);
+          save.download = file.name;
+          $('#share').hidden = !navigator.canShare?.({ files: [file] });
+          $('#result').hidden = false;
+          // en escritorio se descarga sin más; en el móvil se elige entre guardar y compartir (necesita otro toque)
+          if (!matchMedia('(pointer: coarse)').matches) save.click();
+        } catch (err) {
+          console.error(err);
+          alert('No se pudo grabar el vídeo en este navegador. Prueba con Chrome o Safari actualizados.');
+        } finally {
+          recording = false;
+          btn.disabled = false;
+          $('#busy').hidden = true;
+          fit();
+          callup.restart();
+        }
+      });
+      $('#share').addEventListener('click', async () => {
+        if (!file) return;
+        try {
+          await navigator.share({ files: [file], title: `Convocatoria · ${CLUB.name}` });
+        } catch {}
+      });
+    </script>
+  </body>
+</html>

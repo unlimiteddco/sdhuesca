@@ -2,6 +2,8 @@
 
 Las camisetas de un club colgadas en un vestuario 3D: una percha por jugador, ficha con estadísticas y un personalizador que lleva a la tienda oficial con tu nombre y dorsal ya puestos.
 
+En `/convocatoria/` se monta el vídeo vertical de la convocatoria (o del once y el banquillo): se marcan los jugadores y el partido, y se descarga un MP4 de 1080×1920 con las perchas llegando a la barra una a una. La lista viaja en la dirección; el partido por defecto y el lema del cierre están en `club.json` → `callup`.
+
 Un mismo código y una web por club:
 
 | Club | Carpeta | Web |

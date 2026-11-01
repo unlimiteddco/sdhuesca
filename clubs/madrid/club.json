@@ -207,5 +207,15 @@
     "gold": "#febe10",
     "footer": "Vestuario 3D · Santiago Bernabéu · Tributo no oficial",
     "wordmarkWidth": 300
+  },
+  "callup": {
+    "cheer": "¡Hala Madrid!",
+    "next": {
+      "rival": "",
+      "jornada": "",
+      "fecha": "",
+      "campo": "Santiago Bernabéu",
+      "casa": true
+    }
   }
 }
